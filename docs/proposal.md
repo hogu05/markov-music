@@ -2,21 +2,30 @@
 
 ## Introduction
 
-The app will generate and analyze music based on Markov Chain created by uploaded MIDI files.
+The app generates and analyzes music based on Markov Chains.
 
 ## Functions
 
 ### Training
 
-The user will upload MIDI file with tracks and the app will create Markov Chain based on the music in the tracks
+- The user uploads a MIDI file
+- The app processes the tracks from the MIDI file
+- The app constructs a Markov Chain based on the tracks
 
-### Anlaysis
+### Analysis
 
-The user will upload different MIDI file with track and the app will output a similarity score with the previously uploaded tracks.
+- The user uploads MIDI file
+- The app compares the tracks from the uploaded file against the trained Markov Chain
+- The app outputs a similarity score for each track
 
 ### Generation
 
-The app will generate a MIDI file with music based on the created Markov Chain.
+- The app generates a track using the trained Markov Chain
+- The app outputs a MIDI file with the generated music
+
+## UI
+
+- Terminal User Interface (TUI)
 
 ## Technologies
 
