@@ -2,17 +2,16 @@
 
 ## Build
 
-Create a build directory inside the project folder and move into it:
+### Linux/macOS
 
 ```bash
-mkdir build
-cd build
+./install.sh
 ```
 
-Compile the code:
+### Windows
 
 ```bash
-cmake ../src && make
+.\install.bat
 ```
 
 ## Usage
