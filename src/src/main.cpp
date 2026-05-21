@@ -57,5 +57,4 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-// TODO ability to change output syle: major/minor, F, G ...
 // TODO maybe temperature, clean ending - have END note with increasing probability

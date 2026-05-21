@@ -86,6 +86,8 @@ Track load_track(const std::string& filename)
         prev_pitch = current_note.pitch;
     }
 
+    track.push_back(END_TOKEN);
+
     return track;
 }
 
