@@ -4,110 +4,133 @@
 
 void MarkovTrie::insert(std::span<const Token> history, Token next_token)
 {
-    TrieNode* current = root.get();
+    TrieNode* current_node = root.get();
 
-    auto update_stats = [&](TrieNode* node)
+    auto update_counts = [&](TrieNode* node)
     {
-        node->predictions[next_token]++;
-        node->total_weight++;
+        node->counts[next_token]++;
+        node->total_count++;
     };
 
-    update_stats(current);
+    update_counts(current_node);
 
     for (const auto& prev_token : std::ranges::reverse_view(history))
     {
-        std::unique_ptr<TrieNode>& child_ptr = current->children[prev_token];
-        if (!child_ptr)
+        std::unique_ptr<TrieNode>& child_node_ptr = current_node->children[prev_token];
+        if (!child_node_ptr)
         {
-            child_ptr = std::make_unique<TrieNode>();
+            child_node_ptr = std::make_unique<TrieNode>();
         }
 
-        current = child_ptr.get();
-        update_stats(current);
+        current_node = child_node_ptr.get();
+        update_counts(current_node);
     }
 }
 
-Token MarkovTrie::predict(std::span<const Token> history, int current_pitch,
-                          std::mt19937& rng) const
+std::vector<const TrieNode*> MarkovTrie::get_nodes(std::span<const Token> history) const
 {
-    const TrieNode* best_node = root.get();
-    const TrieNode* current = root.get();
+    std::vector<const TrieNode*> nodes = {root.get()};
 
     for (const auto& prev_token : std::ranges::reverse_view(history))
     {
-        auto it = current->children.find(prev_token);
-        if (it == current->children.end())
+        auto it = nodes.back()->children.find(prev_token);
+        if (it == nodes.back()->children.end())
         {
             break;
         }
+        nodes.push_back(it->second.get());
+    }
+    return nodes;
+}
 
-        current = it->second.get();
+Token MarkovTrie::predict(std::span<const Token> history, Pitch current_pitch,
+                          std::mt19937& rng) const
+{
+    std::vector<const TrieNode*> nodes = get_nodes(history);
 
-        for (const auto& [token, count] : current->predictions)
+    std::vector<std::pair<Token, int>> candidates;
+
+    for (const auto* node : std::ranges::reverse_view(nodes))
+    {
+        for (const auto& [token, count] : node->counts)
         {
             Pitch pitch = current_pitch + token.pitch_delta;
             if (pitch >= 0 && pitch <= MAX_PITCH)
             {
-                best_node = current;
-                break;
+                candidates.emplace_back(token, count);
             }
         }
-    }
 
-    std::vector<const std::pair<const Token, int>*> candidates;
-    int total_weight = 0;
-
-    for (const auto& prediction : best_node->predictions)
-    {
-        Pitch pitch = current_pitch + prediction.first.pitch_delta;
-        if (pitch >= 0 && pitch <= MAX_PITCH)
+        if (!candidates.empty())
         {
-            candidates.push_back(&prediction);
-            total_weight += prediction.second;
+            break;
         }
     }
 
+    // TODO: idk
     if (candidates.empty())
     {
         return END_TOKEN;
     }
 
-    std::uniform_int_distribution<int> dist(0, total_weight - 1);
+    int total_count = 0;
+    for (const auto& [token, count] : candidates)
+    {
+        total_count += count;
+    }
+
+    std::uniform_int_distribution<int> dist(0, total_count - 1);
     int roll = dist(rng);
     int cumulative = 0;
 
-    for (const auto* candidate : candidates)
+    for (const auto& candidate : candidates)
     {
-        cumulative += candidate->second;
+        cumulative += candidate.second;
         if (roll < cumulative)
         {
-            return candidate->first;
+            return candidate.first;
         }
     }
-    return candidates.back()->first;
+    return candidates.back().first;
 }
 
-double MarkovTrie::get_probability(std::span<const Token> history, Token next_token) const
+double MarkovTrie::get_probability(std::span<const Token> history, Pitch current_pitch,
+                                   Token next_token) const
 {
-    const TrieNode* current = root.get();
+    std::vector<const TrieNode*> nodes = get_nodes(history);
 
-    for (const auto& prev_token : std::ranges::reverse_view(history))
+    double total_score = 0.0;
+    double total_weight = 0.0;
+
+    for (int depth = 0; depth < static_cast<int>(nodes.size()); ++depth)
     {
-        auto it = current->children.find(prev_token);
-        if (it == current->children.end())
+        const auto* node = nodes[depth];
+        int weight = depth + 1;
+        // TODO: think about the scaling
+        // int weight = 1 << depth
+
+        int total_valid_count = 0;
+        int next_token_count = 0;
+
+        for (const auto& [token, count] : node->counts)
         {
-            break;
+            Pitch pitch = current_pitch + token.pitch_delta;
+            if (pitch >= 0 && pitch <= MAX_PITCH)
+            {
+                total_valid_count += count;
+                if (token == next_token)
+                {
+                    next_token_count = count;
+                }
+            }
         }
-        current = it->second.get();
+
+        if (total_valid_count > 0)
+        {
+            total_score += weight * (static_cast<double>(next_token_count) / total_valid_count);
+            total_weight += weight;
+        }
     }
 
-    auto it = current->predictions.find(next_token);
-    double count = (it != current->predictions.end()) ? it->second : 0.0;
-
-    if (current->total_weight == 0)
-    {
-        return 0.0;
-    }
-
-    return count / static_cast<double>(current->total_weight);
+    return total_weight > 0 ? total_score / total_weight : 0.0;
 }

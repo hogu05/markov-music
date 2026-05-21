@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <array>
 
-void MusicModel::train(const std::vector<Token>& tokens)
+void MusicModel::train(const Track& track)
 {
-    if (tokens.empty())
+    if (track.empty())
     {
         return;
     }
@@ -13,7 +13,7 @@ void MusicModel::train(const std::vector<Token>& tokens)
     std::array<Token, MAX_ORDER> history{};
     history.fill(START_TOKEN);
 
-    for (const auto& token : tokens)
+    for (const auto& token : track)
     {
         markov_trie.insert(history, token);
         std::shift_left(history.begin(), history.end(), 1);
@@ -22,21 +22,19 @@ void MusicModel::train(const std::vector<Token>& tokens)
 }
 
 constexpr int MAX_GENERATE_LENGTH = 1000;
-std::vector<Token> MusicModel::generate(std::mt19937& rng) const
+// TODO: Change ending
+Track MusicModel::generate_track(std::mt19937& rng) const
 {
-    std::vector<Token> tokens;
+    Track track;
 
-    tokens.reserve(MAX_ORDER);
-    for (int i = 0; i < MAX_ORDER; ++i)
-    {
-        tokens.push_back(START_TOKEN);
-    }
+    track.reserve(MAX_GENERATE_LENGTH);
+    track.assign(MAX_ORDER, START_TOKEN);
 
     Pitch current_pitch = START_PITCH;
 
-    for (int i = 0; i < MAX_GENERATE_LENGTH; ++i)
+    for (int _ = 0; _ < MAX_GENERATE_LENGTH; ++_)
     {
-        std::span<const Token> history(tokens.end() - MAX_ORDER, MAX_ORDER);
+        std::span<const Token> history(track.end() - MAX_ORDER, MAX_ORDER);
 
         Token next_token = markov_trie.predict(history, current_pitch, rng);
 
@@ -45,17 +43,17 @@ std::vector<Token> MusicModel::generate(std::mt19937& rng) const
             break;
         }
 
-        tokens.push_back(next_token);
+        track.push_back(next_token);
         current_pitch += next_token.pitch_delta;
     }
 
-    return tokens;
+    return {track.begin() + MAX_ORDER, track.end()};
 }
 
 constexpr double EPSILON = 1e-5;
-double MusicModel::evaluate(const std::vector<Token>& song) const
+double MusicModel::evaluate(const Track& track) const
 {
-    if (song.empty())
+    if (track.empty())
     {
         return 0.0;
     }
@@ -64,28 +62,21 @@ double MusicModel::evaluate(const std::vector<Token>& song) const
     history.fill(START_TOKEN);
 
     double score = 0.0;
-    int num_notes = 0;
 
-    for (const auto& token : song)
+    Pitch current_pitch = START_PITCH;
+
+    for (const auto& token : track)
     {
-        if (token == START_TOKEN)
-        {
-            continue;
-        }
-
-        double probability = markov_trie.get_probability(history, token);
+        double probability = markov_trie.get_probability(history, current_pitch, token);
 
         score += std::log(probability + EPSILON);
 
         std::shift_left(history.begin(), history.end(), 1);
         history.back() = token;
-        num_notes++;
+        current_pitch += token.pitch_delta;
     }
 
-    if (num_notes == 0)
-    {
-        return 0.0;
-    }
-
-    return score / static_cast<double>(num_notes);
+    return score / static_cast<double>(track.size());
+    // TODO: think about score
+    // return std::exp(score / track.size());
 }

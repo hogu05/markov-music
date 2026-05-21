@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     MusicModel model;
     for (const auto& file : std::filesystem::directory_iterator(training_folder))
     {
-        std::vector<Token> tokens = midi_processor::load_tokens(file.path().string());
+        std::vector<Token> tokens = midi_processor::load_track(file.path().string());
 
         if (!tokens.empty())
         {
@@ -40,12 +40,12 @@ int main(int argc, char* argv[])
     if (mode == "generate")
     {
         std::mt19937 rng(std::random_device{}());
-        std::vector<Token> tokens = model.generate(rng);
-        midi_processor::save_tokens(tokens, argv[3]);
+        std::vector<Token> tokens = model.generate_track(rng);
+        midi_processor::save_track(tokens, argv[3]);
     }
     else if (mode == "score")
     {
-        std::vector<Token> tokens = midi_processor::load_tokens(argv[3]);
+        std::vector<Token> tokens = midi_processor::load_track(argv[3]);
         double score = model.evaluate(tokens);
         std::cout << "Score: " << score << std::endl;
     }

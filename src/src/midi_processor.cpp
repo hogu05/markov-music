@@ -23,31 +23,34 @@ struct Note
 };
 } // namespace
 
-std::vector<Token> load_tokens(const std::string& filename)
+// std::map<int, int> durations;
+
+Track load_track(const std::string& filename)
 {
     std::vector<Note> notes;
-    smf::MidiFile file;
+    smf::MidiFile midi_file;
 
-    if (!file.read(filename))
+    if (!midi_file.read(filename))
     {
         std::cerr << "Error reading file: " << filename << std::endl;
         return {};
     }
 
-    file.absoluteTicks();
-    file.sortTracks();
-    file.linkNotePairs();
+    midi_file.absoluteTicks();
+    midi_file.sortTracks();
+    midi_file.linkNotePairs();
 
     const double TICKS_PER_UNIT =
-        file.getTicksPerQuarterNote() / static_cast<double>(UNITS_PER_QUARTER);
+        midi_file.getTicksPerQuarterNote() / static_cast<double>(UNITS_PER_QUARTER);
     auto to_unit = [&](int ticks) -> Unit
     { return static_cast<Unit>(std::round(ticks / TICKS_PER_UNIT)); };
+    // TODO: quantitize
 
-    for (int i = 0; i < file.getTrackCount(); ++i)
+    for (int track_idx = 0; track_idx < midi_file.getTrackCount(); ++track_idx)
     {
-        for (int j = 0; j < file.getEventCount(i); ++j)
+        for (int event_idx = 0; event_idx < midi_file.getEventCount(track_idx); ++event_idx)
         {
-            const smf::MidiEvent& event = file[i][j];
+            const smf::MidiEvent& event = midi_file[track_idx][event_idx];
 
             if (event.isNoteOn() && event.isLinked() != 0)
             {
@@ -58,39 +61,42 @@ std::vector<Token> load_tokens(const std::string& filename)
         }
     }
 
-    std::ranges::sort(notes);
-
-    std::vector<Token> tokens;
     if (notes.empty())
     {
-        return tokens;
+        return {};
     }
+
+    std::ranges::sort(notes);
+
+    Track track;
 
     Pitch prev_pitch = START_PITCH;
 
     for (size_t i = 0; i < notes.size(); ++i)
     {
-        const auto& current = notes[i];
+        const Note& current_note = notes[i];
 
-        PitchDelta delta = current.pitch - prev_pitch;
+        PitchDelta delta = current_note.pitch - prev_pitch;
 
-        Unit wait = END_WAIT;
-        if (i + 1 < notes.size())
-        {
-            wait = std::max(notes[i + 1].start - current.start, 0);
-        }
-        tokens.push_back({.pitch_delta = delta, .duration = current.duration, .wait = wait});
+        Unit wait = (i + 1 < notes.size()) ? std::max(notes[i + 1].start - current_note.start, 0)
+                                           : END_WAIT;
+        // durations[delta]++;
+        track.push_back({.pitch_delta = delta, .duration = current_note.duration, .wait = wait});
 
-        prev_pitch = current.pitch;
+        prev_pitch = current_note.pitch;
     }
 
-    return tokens;
+    return track;
 }
 
-void save_tokens(const std::vector<Token>& tokens, const std::string& filename)
+void save_track(const Track& track, const std::string& filename)
 {
-    smf::MidiFile file;
-    file.setTicksPerQuarterNote(DEFAULT_TICKS_PER_QUARTER);
+    /*for (const auto& [duration, count] : durations)
+    {
+        std::cout << duration << ": " << count << "\n";
+    }*/
+    smf::MidiFile midi_file;
+    midi_file.setTicksPerQuarterNote(DEFAULT_TICKS_PER_QUARTER);
 
     const double TICKS_PER_UNIT =
         DEFAULT_TICKS_PER_QUARTER / static_cast<double>(UNITS_PER_QUARTER);
@@ -98,23 +104,22 @@ void save_tokens(const std::vector<Token>& tokens, const std::string& filename)
     Pitch current_pitch = START_PITCH;
     int current_tick_offset = 0;
 
-    for (const auto& token : tokens)
+    for (const auto& token : track)
     {
         current_pitch = std::clamp(current_pitch + token.pitch_delta, 0, MAX_PITCH);
 
-        int start_tick = current_tick_offset;
-        int end_tick = start_tick + static_cast<int>(token.duration * TICKS_PER_UNIT);
+        midi_file.addNoteOn(0, current_tick_offset, 0, current_pitch, DEFAULT_VELOCITY);
+        midi_file.addNoteOff(
+            0, current_tick_offset + static_cast<int>(token.duration * TICKS_PER_UNIT), 0,
+            current_pitch);
 
-        file.addNoteOn(0, start_tick, 0, current_pitch, DEFAULT_VELOCITY);
-        file.addNoteOff(0, end_tick, 0, current_pitch);
-
-        if (token.wait != -1)
+        if (token.wait != END_WAIT)
         {
             current_tick_offset += static_cast<int>(token.wait * TICKS_PER_UNIT);
         }
     }
 
-    file.sortTracks();
-    file.write(filename);
+    midi_file.sortTracks();
+    midi_file.write(filename);
 }
 } // namespace midi_processor

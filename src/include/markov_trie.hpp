@@ -10,8 +10,8 @@
 
 struct TrieNode
 {
-    std::map<Token, int> predictions;
-    int total_weight = 0;
+    std::map<Token, int> counts;
+    int total_count = 0;
     std::map<Token, std::unique_ptr<TrieNode>> children;
 };
 
@@ -19,11 +19,13 @@ class MarkovTrie
 {
   public:
     void insert(std::span<const Token> history, Token next_token);
-    Token predict(std::span<const Token> history, int current_pitch, std::mt19937& rng) const;
-    double get_probability(std::span<const Token> history, Token next_token) const;
+    Token predict(std::span<const Token> history, Pitch current_pitch, std::mt19937& rng) const;
+    double get_probability(std::span<const Token> history, Pitch current_pitch,
+                           Token next_token) const;
 
   private:
     std::unique_ptr<TrieNode> root = std::make_unique<TrieNode>();
+    std::vector<const TrieNode*> get_nodes(std::span<const Token> history) const;
 };
 
 #endif

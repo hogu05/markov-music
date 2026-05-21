@@ -2,6 +2,7 @@
 #define TYPES_HPP
 
 #include <compare>
+#include <vector>
 
 using Unit = int;
 using Pitch = int;
@@ -15,11 +16,14 @@ struct Token
     std::strong_ordering operator<=>(const Token&) const = default;
 };
 
+using Track = std::vector<Token>;
+
 // TODO maybe change
 constexpr Pitch START_PITCH = 60;
 constexpr Pitch MAX_PITCH = 127;
 constexpr Unit END_WAIT = -1;
 constexpr Token START_TOKEN = Token{.pitch_delta = 0, .duration = 0, .wait = 0};
+// TODO: maybe rename to something like EMPTY_TOKEN
 constexpr Token END_TOKEN = Token{.pitch_delta = -1, .duration = -1, .wait = -1};
 
 #endif
