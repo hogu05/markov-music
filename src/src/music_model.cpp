@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <iostream>
 
 void MusicModel::train(const Track& track)
 {
@@ -11,7 +12,7 @@ void MusicModel::train(const Track& track)
     }
 
     std::array<Token, MAX_ORDER> history{};
-    history.fill(START_TOKEN);
+    history.fill(EMPTY_TOKEN);
 
     for (const auto& token : track)
     {
@@ -21,14 +22,14 @@ void MusicModel::train(const Track& track)
     }
 }
 
-constexpr int MAX_GENERATE_LENGTH = 1000;
+constexpr int MAX_GENERATE_LENGTH = 10000;
 // TODO: Change ending
 Track MusicModel::generate_track(std::mt19937& rng) const
 {
     Track track;
 
     track.reserve(MAX_GENERATE_LENGTH);
-    track.assign(MAX_ORDER, START_TOKEN);
+    track.assign(MAX_ORDER, EMPTY_TOKEN);
 
     Pitch current_pitch = START_PITCH;
 
@@ -45,6 +46,7 @@ Track MusicModel::generate_track(std::mt19937& rng) const
 
         track.push_back(next_token);
         current_pitch += next_token.pitch_delta;
+        std::cout << _ << std::endl;
     }
 
     return {track.begin() + MAX_ORDER, track.end()};
@@ -59,7 +61,7 @@ double MusicModel::evaluate(const Track& track) const
     }
 
     std::array<Token, MAX_ORDER> history{};
-    history.fill(START_TOKEN);
+    history.fill(EMPTY_TOKEN);
 
     double score = 0.0;
 
