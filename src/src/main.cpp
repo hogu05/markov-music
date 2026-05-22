@@ -1,16 +1,10 @@
-#include <filesystem>
 #include <iostream>
-#include <random>
-#include <string>
-#include <vector>
 
-#include "midi_processor.hpp"
-#include "music_model.hpp"
-#include "types.hpp"
+#include "tui.hpp"
 
 int main(int argc, char* argv[])
 {
-    if (argc < 4)
+    /*if (argc < 4)
     {
         std::cerr << "Error: Not enough arguments" << std::endl;
         return 1;
@@ -52,7 +46,11 @@ int main(int argc, char* argv[])
     else
     {
         std::cerr << "Error: Unknown mode: " << mode << std::endl;
-    }
+    }*/
+    std::cout << "\033[?1049h";
+    Tui tui;
+    tui.run();
+    std::cout << "\033[?1049l";
 
     return 0;
 }

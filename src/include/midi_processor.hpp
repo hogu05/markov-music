@@ -1,5 +1,5 @@
-#ifndef MIDI_PROCESSOR_H
-#define MIDI_PROCESSOR_H
+#ifndef MIDI_PROCESSOR_HPP
+#define MIDI_PROCESSOR_HPP
 
 #include <string>
 

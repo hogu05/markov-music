@@ -1,5 +1,5 @@
-#ifndef MUSIC_MODEL_H
-#define MUSIC_MODEL_H
+#ifndef MUSIC_MODEL_HPP
+#define MUSIC_MODEL_HPP
 
 #include <random>
 
