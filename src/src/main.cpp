@@ -57,4 +57,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-// TODO maybe temperature, clean ending - have END note with increasing probability
+// TODO: maybe temperature, clean ending - have END note with increasing probability
+// TODO: TUI
+// TODO: multiple instruments
+// TODO: tests

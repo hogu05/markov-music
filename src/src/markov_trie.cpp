@@ -1,5 +1,6 @@
 #include "markov_trie.hpp"
 
+#include <iostream>
 #include <ranges>
 
 void MarkovTrie::insert(std::span<const Token> history, Token next_token)
@@ -43,6 +44,7 @@ std::vector<const TrieNode*> MarkovTrie::get_nodes(std::span<const Token> histor
     return nodes;
 }
 
+// TODO: consider even the not deepest nodes
 Token MarkovTrie::predict(std::span<const Token> history, Pitch current_pitch,
                           std::mt19937& rng) const
 {
@@ -82,6 +84,7 @@ Token MarkovTrie::predict(std::span<const Token> history, Pitch current_pitch,
     std::uniform_int_distribution<int> dist(0, total_count - 1);
     int roll = dist(rng);
     int cumulative = 0;
+    // std::cout << candidates.size() << std::endl;
 
     for (const auto& candidate : candidates)
     {

@@ -23,7 +23,6 @@ void MusicModel::train(const Track& track)
 }
 
 constexpr int MAX_GENERATE_LENGTH = 10000;
-// TODO: Change ending
 Track MusicModel::generate_track(std::mt19937& rng) const
 {
     Track track;
@@ -46,8 +45,8 @@ Track MusicModel::generate_track(std::mt19937& rng) const
 
         track.push_back(next_token);
         current_pitch += next_token.pitch_delta;
-        std::cout << _ << std::endl;
     }
+    // std::cout << track.size() << std::endl;
 
     return {track.begin() + MAX_ORDER, track.end()};
 }

@@ -14,6 +14,14 @@ constexpr Unit UNITS_PER_QUARTER = 4;
 constexpr int DEFAULT_TICKS_PER_QUARTER = 480;
 constexpr int DEFAULT_VELOCITY = 90;
 
+constexpr std::array<Unit, 11> TIME_GRID = {0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32};
+
+Unit snap(Unit value)
+{
+    return *std::ranges::min_element(TIME_GRID, [&](Unit a, Unit b)
+                                     { return std::abs(a - value) < std::abs(b - value); });
+}
+
 struct Note
 {
     Unit start;
@@ -22,8 +30,6 @@ struct Note
     std::strong_ordering operator<=>(const Note&) const = default;
 };
 } // namespace
-
-// std::map<int, int> durations;
 
 Track load_track(const std::string& filename)
 {
@@ -44,7 +50,6 @@ Track load_track(const std::string& filename)
         midi_file.getTicksPerQuarterNote() / static_cast<double>(UNITS_PER_QUARTER);
     auto to_unit = [&](int ticks) -> Unit
     { return static_cast<Unit>(std::round(ticks / TICKS_PER_UNIT)); };
-    // TODO: quantitize
 
     for (int track_idx = 0; track_idx < midi_file.getTrackCount(); ++track_idx)
     {
@@ -56,7 +61,7 @@ Track load_track(const std::string& filename)
             {
                 notes.push_back({.start = to_unit(event.tick),
                                  .pitch = event.getKeyNumber(),
-                                 .duration = std::max(1, to_unit(event.getTickDuration()))});
+                                 .duration = std::max(1, snap(to_unit(event.getTickDuration())))});
             }
         }
     }
@@ -78,9 +83,8 @@ Track load_track(const std::string& filename)
 
         PitchDelta delta = current_note.pitch - prev_pitch;
 
-        Unit wait = (i + 1 < notes.size()) ? std::max(notes[i + 1].start - current_note.start, 0)
-                                           : END_WAIT;
-        // durations[delta]++;
+        Unit wait =
+            (i + 1 < notes.size()) ? snap(notes[i + 1].start - current_note.start) : END_WAIT;
         track.push_back({.pitch_delta = delta, .duration = current_note.duration, .wait = wait});
 
         prev_pitch = current_note.pitch;
@@ -93,10 +97,6 @@ Track load_track(const std::string& filename)
 
 void save_track(const Track& track, const std::string& filename)
 {
-    /*for (const auto& [duration, count] : durations)
-    {
-        std::cout << duration << ": " << count << "\n";
-    }*/
     smf::MidiFile midi_file;
     midi_file.setTicksPerQuarterNote(DEFAULT_TICKS_PER_QUARTER);
 
