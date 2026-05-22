@@ -5,6 +5,7 @@
 
 #include "midi_processor.hpp"
 
+// TODO: improve
 void Tui::run()
 {
     info_line = "Welcome to Markov Music!";
@@ -33,11 +34,8 @@ void Tui::run()
             case 4:
                 reset();
                 break;
-            case 5:
-                show_trained_files();
-                break;
             default:
-                info_line = "Invalid number, the input has to be a number between 0 and 5";
+                info_line = "Invalid number, the input has to be a number between 0 and 4";
                 break;
             }
         }
@@ -68,7 +66,6 @@ void Tui::print_menu()
     std::cout << "2. Generate" << std::endl;
     std::cout << "3. Score" << std::endl;
     std::cout << "4. Reset model" << std::endl;
-    std::cout << "5. Show trained files" << std::endl;
     std::cout << "0. Exit" << std::endl;
 }
 
@@ -153,9 +150,7 @@ void Tui::score()
         for (const auto& file : std::filesystem::directory_iterator(path))
         {
             // TODO: look at this more
-            std::cerr.setstate(std::ios::failbit);
             Track track = midi_processor::load_track(file.path().string());
-            std::cerr.clear();
 
             if (!track.empty())
             {
@@ -190,19 +185,4 @@ std::string Tui::ask_path(const std::string& prompt)
     std::string path;
     std::getline(std::cin, path);
     return path;
-}
-
-void Tui::show_trained_files()
-{
-    if (trained_files.empty())
-    {
-        info_line = "No files trained";
-        return;
-    }
-
-    info_line = "";
-    for (const auto& file : trained_files)
-    {
-        info_line += file + "\n";
-    }
 }

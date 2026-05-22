@@ -21,7 +21,6 @@ class Tui
     void generate_track();
     void score();
     void reset();
-    void show_trained_files();
 };
 
 #endif
