@@ -9,5 +9,8 @@ file(GLOB LIB_SOURCES "libs/midifile/src/*.cpp")
 
 include_directories(include)
 file(GLOB MY_SOURCES "src/*.cpp")
+list(REMOVE_ITEM MY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
 
-add_executable(markov-music ${MY_SOURCES} ${LIB_SOURCES})
+add_executable(markov-music src/main.cpp ${MY_SOURCES} ${LIB_SOURCES})
+
+add_executable(score-tests ../tests/score_tests.cpp ${MY_SOURCES} ${LIB_SOURCES})
