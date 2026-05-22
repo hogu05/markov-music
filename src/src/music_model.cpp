@@ -22,17 +22,15 @@ void MusicModel::train(const Track& track)
     }
 }
 
-constexpr int MAX_GENERATE_LENGTH = 10000;
 Track MusicModel::generate_track(std::mt19937& rng) const
 {
     Track track;
 
-    track.reserve(MAX_GENERATE_LENGTH);
     track.assign(MAX_ORDER, EMPTY_TOKEN);
 
     Pitch current_pitch = START_PITCH;
 
-    for (int _ = 0; _ < MAX_GENERATE_LENGTH; ++_)
+    for (;;)
     {
         std::span<const Token> history(track.end() - MAX_ORDER, MAX_ORDER);
 
@@ -46,7 +44,7 @@ Track MusicModel::generate_track(std::mt19937& rng) const
         track.push_back(next_token);
         current_pitch += next_token.pitch_delta;
     }
-    // std::cout << track.size() << std::endl;
+    std::cout << track.size() << std::endl;
 
     return {track.begin() + MAX_ORDER, track.end()};
 }
@@ -77,7 +75,5 @@ double MusicModel::evaluate(const Track& track) const
         current_pitch += token.pitch_delta;
     }
 
-    return score / static_cast<double>(track.size());
-    // TODO: think about score
-    // return std::exp(score / track.size());
+    return std::exp(score / static_cast<double>(track.size()));
 }
