@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 
 #include "MidiFile.h"
 
@@ -36,10 +35,8 @@ Track load_track(const std::string& filename)
     std::vector<Note> notes;
     smf::MidiFile midi_file;
 
-    // TODO: What to do with this
     if (!midi_file.read(filename))
     {
-        std::cerr << "Error reading file: " << filename << std::endl;
         return {};
     }
 
