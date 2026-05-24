@@ -9,7 +9,7 @@
 class MusicModel
 {
   public:
-    static constexpr int MAX_ORDER = 3;
+    static constexpr int MAX_ORDER = 5;
     void train(const Track& track);
     Track generate_track(std::mt19937& rng) const;
     double evaluate(const Track& track) const;

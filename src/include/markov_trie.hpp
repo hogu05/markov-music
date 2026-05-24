@@ -24,6 +24,7 @@ class MarkovTrie
                            Token next_token) const;
 
   private:
+    static int get_weight(int depth);
     std::unique_ptr<TrieNode> root = std::make_unique<TrieNode>();
     std::vector<const TrieNode*> get_nodes(std::span<const Token> history) const;
 };

@@ -1,6 +1,5 @@
 #include "markov_trie.hpp"
 
-#include <iostream>
 #include <ranges>
 
 void MarkovTrie::insert(std::span<const Token> history, Token next_token)
@@ -28,6 +27,11 @@ void MarkovTrie::insert(std::span<const Token> history, Token next_token)
     }
 }
 
+int MarkovTrie::get_weight(int depth)
+{
+    return depth * depth;
+}
+
 std::vector<const TrieNode*> MarkovTrie::get_nodes(std::span<const Token> history) const
 {
     std::vector<const TrieNode*> nodes = {root.get()};
@@ -44,57 +48,67 @@ std::vector<const TrieNode*> MarkovTrie::get_nodes(std::span<const Token> histor
     return nodes;
 }
 
-// TODO: consider even the not deepest nodes
 Token MarkovTrie::predict(std::span<const Token> history, Pitch current_pitch,
                           std::mt19937& rng) const
 {
     std::vector<const TrieNode*> nodes = get_nodes(history);
 
-    std::vector<std::pair<Token, int>> candidates;
+    std::map<Token, double> weights;
 
-    for (const auto* node : std::ranges::reverse_view(nodes))
+    for (int depth = 0; depth < static_cast<int>(nodes.size()); ++depth)
     {
+        const auto* node = nodes[depth];
+        int weight = get_weight(depth + 1);
+
+        int total_valid_count = 0;
         for (const auto& [token, count] : node->counts)
         {
             Pitch pitch = current_pitch + token.pitch_delta;
             if (pitch >= 0 && pitch <= MAX_PITCH)
             {
-                candidates.emplace_back(token, count);
+                total_valid_count += count;
             }
         }
 
-        if (!candidates.empty())
+        if (total_valid_count == 0)
         {
-            break;
+            continue;
+        }
+
+        for (const auto& [token, count] : node->counts)
+        {
+            Pitch pitch = current_pitch + token.pitch_delta;
+            if (pitch >= 0 && pitch <= MAX_PITCH)
+            {
+                weights[token] += weight * (static_cast<double>(count) / total_valid_count);
+            }
         }
     }
 
-    // TODO: idk
-    if (candidates.empty())
+    if (weights.empty())
     {
         return END_TOKEN;
     }
 
-    int total_count = 0;
-    for (const auto& [token, count] : candidates)
+    double total_weight = 0.0;
+    for (const auto& [token, w] : weights)
     {
-        total_count += count;
+        total_weight += w;
     }
 
-    std::uniform_int_distribution<int> dist(0, total_count - 1);
-    int roll = dist(rng);
-    int cumulative = 0;
-    // std::cout << candidates.size() << std::endl;
+    std::uniform_real_distribution<double> dist(0.0, total_weight);
+    double roll = dist(rng);
+    double cumulative = 0.0;
 
-    for (const auto& candidate : candidates)
+    for (const auto& [token, w] : weights)
     {
-        cumulative += candidate.second;
+        cumulative += w;
         if (roll < cumulative)
         {
-            return candidate.first;
+            return token;
         }
     }
-    return candidates.back().first;
+    return weights.rbegin()->first;
 }
 
 double MarkovTrie::get_probability(std::span<const Token> history, Pitch current_pitch,
@@ -108,9 +122,7 @@ double MarkovTrie::get_probability(std::span<const Token> history, Pitch current
     for (int depth = 0; depth < static_cast<int>(nodes.size()); ++depth)
     {
         const auto* node = nodes[depth];
-        int weight = depth + 1;
-        // TODO: think about the scaling
-        // int weight = 1 << depth
+        int weight = get_weight(depth + 1);
 
         int total_valid_count = 0;
         int next_token_count = 0;
