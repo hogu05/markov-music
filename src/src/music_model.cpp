@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <iostream>
 
 void MusicModel::train(const Track& track)
 {
@@ -44,7 +43,6 @@ Track MusicModel::generate_track(std::mt19937& rng) const
         track.push_back(next_token);
         current_pitch += next_token.pitch_delta;
     }
-    std::cout << track.size() << std::endl;
 
     return {track.begin() + MAX_ORDER, track.end()};
 }
