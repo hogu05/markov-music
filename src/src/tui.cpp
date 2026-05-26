@@ -5,7 +5,6 @@
 
 #include "midi_processor.hpp"
 
-// TODO: improve
 void Tui::run()
 {
     info_line = "Welcome to Markov Music!";
@@ -35,13 +34,13 @@ void Tui::run()
                 reset();
                 break;
             default:
-                info_line = "Invalid number, the input has to be a number between 0 and 4";
+                info_line = "Invalid option";
                 break;
             }
         }
         catch (const std::invalid_argument&)
         {
-            info_line = "Invalid input, the input has to be a number";
+            info_line = "Enter a number";
         }
     }
 }
@@ -77,6 +76,14 @@ void Tui::train()
         info_line = "Cancelled";
         return;
     }
+    if (!std::filesystem::exists(path))
+    {
+        info_line = "Invalid path: " + path;
+        return;
+    }
+
+    info_line = "Training...";
+    update_screen();
     if (std::filesystem::is_directory(path))
     {
         for (const auto& file : std::filesystem::directory_iterator(path))
@@ -85,36 +92,24 @@ void Tui::train()
             if (!track.empty())
             {
                 model.train(track);
-                trained_files.push_back(file.path().filename().string());
             }
-        }
-    }
-    else if (std::filesystem::is_regular_file(path))
-    {
-        Track track = midi_processor::load_track(path);
-        if (!track.empty())
-        {
-            model.train(track);
-            trained_files.push_back(std::filesystem::path(path).filename().string());
         }
     }
     else
     {
-        info_line = "Invalid path: " + path;
-        return;
+        Track track = midi_processor::load_track(path);
+        if (track.empty())
+        {
+            info_line = "Failed to load file: " + path;
+            return;
+        }
+        model.train(track);
     }
-
-    info_line = "Trained on " + std::to_string(trained_files.size()) + " files";
+    info_line = "Training complete";
 }
 
 void Tui::generate_track()
 {
-    if (trained_files.empty())
-    {
-        info_line = "Model not trained";
-        return;
-    }
-
     std::string path = ask_path("Enter output path");
     if (path.empty())
     {
@@ -124,39 +119,54 @@ void Tui::generate_track()
 
     std::mt19937 rng(std::random_device{}());
     Track track = model.generate_track(rng);
+    if (track.empty())
+    {
+        info_line = "Model not trained";
+        return;
+    }
     midi_processor::save_track(track, path);
     info_line = "Generated: " + path;
 }
 
 void Tui::score()
 {
-    if (trained_files.empty())
-    {
-        info_line = "Model not trained";
-        return;
-    }
-
     std::string path = ask_path("Enter path to score");
     if (path.empty())
     {
         info_line = "Cancelled";
         return;
     }
+    if (!std::filesystem::exists(path))
+    {
+        info_line = "Invalid path: " + path;
+        return;
+    }
 
-    info_line = "";
+    info_line = "Scoring...";
+    update_screen();
 
     if (std::filesystem::is_directory(path))
     {
+        double sum = 0.0;
+        int count = 0;
+        info_line = "";
         for (const auto& file : std::filesystem::directory_iterator(path))
         {
-            // TODO: look at this more
             Track track = midi_processor::load_track(file.path().string());
 
             if (!track.empty())
             {
                 double score = model.evaluate(track);
                 info_line += file.path().filename().string() + ": " + std::to_string(score) + "\n";
+                update_screen();
+                sum += score;
+                count++;
             }
+        }
+
+        if (count > 0)
+        {
+            info_line += "Average: " + std::to_string(sum / count);
         }
     }
     else
@@ -174,7 +184,6 @@ void Tui::score()
 void Tui::reset()
 {
     model = MusicModel{};
-    trained_files.clear();
     info_line = "Model reset";
 }
 

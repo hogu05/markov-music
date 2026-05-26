@@ -95,6 +95,11 @@ Track load_track(const std::string& filename)
 
 void save_track(const Track& track, const std::string& filename)
 {
+    if (track.empty())
+    {
+        return;
+    }
+
     smf::MidiFile midi_file;
     midi_file.setTicksPerQuarterNote(DEFAULT_TICKS_PER_QUARTER);
 

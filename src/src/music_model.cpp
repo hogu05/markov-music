@@ -49,7 +49,7 @@ Track MusicModel::generate_track(std::mt19937& rng) const
     return {track.begin() + MAX_ORDER, track.end()};
 }
 
-constexpr double EPSILON = 1e-5;
+constexpr double EPSILON = 1e-10;
 double MusicModel::evaluate(const Track& track) const
 {
     if (track.empty())

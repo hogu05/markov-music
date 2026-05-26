@@ -11,7 +11,6 @@ class Tui
   private:
     MusicModel model;
     std::string info_line;
-    std::vector<std::string> trained_files;
 
     static void clear_screen();
     static void print_menu();
