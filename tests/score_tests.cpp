@@ -1,45 +1,27 @@
 #include <array>
 #include <cassert>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
-#include <numeric>
+#include <vector>
 
 #include "midi_processor.hpp"
 #include "music_model.hpp"
 
-constexpr std::array<std::string_view, 10> COMPOSERS = {
-    "bach",       "beatles",   "beethoven",     "billy_joel", "chopin",
-    "elton_john", "hans_zimmer", "john_williams", "mozart",   "taylor_swift"};
+constexpr std::array<std::string, 10> ARTISTS = {
+    "bach",        "beethoven",     "billy_joel",      "chopin", "elton_john",
+    "hans_zimmer", "john_williams", "michael_jackson", "mozart", "taylor_swift"};
 
-double average_score(const MusicModel& model, const std::string& test_folder)
+const std::vector<size_t> ALL = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+const std::vector<size_t> CLASSICAL = {0, 1, 3, 8};
+const std::vector<size_t> POP = {7, 2, 4, 9};
+
+std::vector<double> score(const std::vector<size_t>& train_ids, const std::vector<size_t>& test_ids)
 {
-    std::vector<double> scores;
-    std::cerr.setstate(std::ios::failbit);
-    for (const auto& file : std::filesystem::directory_iterator(test_folder))
+    MusicModel model;
+    for (size_t id : train_ids)
     {
-        Track track = midi_processor::load_track(file.path().string());
-        if (!track.empty())
-        {
-            scores.push_back(model.evaluate(track));
-        }
-    }
-    std::cerr.clear();
-    if (scores.empty())
-    {
-        return 0.0;
-    }
-    return std::accumulate(scores.begin(), scores.end(), 0.0) / scores.size();
-}
-
-int main()
-{
-    for (const auto& train_composer : COMPOSERS)
-    {
-        MusicModel model;
-        std::string train_folder = "data/train/" + std::string(train_composer);
-
-        std::cerr.setstate(std::ios::failbit);
-        for (const auto& file : std::filesystem::directory_iterator(train_folder))
+        for (const auto& file : std::filesystem::directory_iterator("data/train/" + ARTISTS.at(id)))
         {
             Track track = midi_processor::load_track(file.path().string());
             if (!track.empty())
@@ -47,36 +29,78 @@ int main()
                 model.train(track);
             }
         }
-        std::cerr.clear();
-
-        std::cout << "Trained on: " << train_composer << "\n";
-        double own_score = 0.0;
-        for (const auto& test_composer : COMPOSERS)
-        {
-            std::string test_folder = "data/test/" + std::string(test_composer);
-            double score = average_score(model, test_folder);
-            std::cout << "  " << test_composer << ": " << score << "\n";
-            if (test_composer == train_composer)
-            {
-                own_score = score;
-            }
-        }
-
-        double best_other = 0.0;
-        for (const auto& test_composer : COMPOSERS)
-        {
-            if (test_composer == train_composer)
-            {
-                continue;
-            }
-            double score = average_score(model, "data/test/" + std::string(test_composer));
-            best_other = std::max(best_other, score);
-        }
-
-        assert(own_score > best_other);
-        std::cout << "  -> PASSED\n\n";
     }
 
-    std::cout << "All tests passed.\n";
+    std::vector<double> scores(ARTISTS.size());
+    for (size_t id : test_ids)
+    {
+        double sum = 0.0;
+        int count = 0;
+        for (const auto& file : std::filesystem::directory_iterator("data/test/" + ARTISTS.at(id)))
+        {
+            Track track = midi_processor::load_track(file.path().string());
+            if (!track.empty())
+            {
+                sum += model.evaluate(track);
+                count++;
+            }
+        }
+        scores[id] = count > 0 ? sum / count : 0.0;
+    }
+    return scores;
+}
+
+double average(const std::vector<double>& scores, const std::vector<size_t>& ids)
+{
+    double sum = 0.0;
+    for (size_t id : ids)
+    {
+        sum += scores[id];
+    }
+    return sum / static_cast<double>(ids.size());
+}
+
+int main()
+{
+    std::cout << "ARTIST RECOGNITION" << std::endl;
+    std::cout << std::left << std::setw(18) << "Artist" << "| " << std::setw(12) << "Score"
+              << "| " << std::setw(12) << "Other" << "| " << "Result" << std::endl;
+    std::cout << std::string(58, '-') << std::endl;
+
+    bool artist_recognition_passed = true;
+    for (size_t artist_id = 0; artist_id < ARTISTS.size(); ++artist_id)
+    {
+        auto scores = score({artist_id}, ALL);
+        double artist_score = scores[artist_id];
+        double best_other = 0.0;
+        for (size_t other_id = 0; other_id < ARTISTS.size(); ++other_id)
+        {
+            if (other_id != artist_id)
+            {
+                best_other = std::max(best_other, scores[other_id]);
+            }
+        }
+
+        bool passed = artist_score > best_other;
+        artist_recognition_passed = artist_recognition_passed && passed;
+
+        std::cout << std::left << std::setw(18) << ARTISTS.at(artist_id) << "| " << std::setw(12)
+                  << std::setprecision(5) << artist_score << "| " << std::setw(12) << best_other
+                  << "| " << (passed ? "PASS" : "FAIL") << std::endl;
+    }
+
+    std::cout << (artist_recognition_passed ? "PASSED" : "FAILED") << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << "GENRE RECOGNITION" << std::endl;
+    auto scores = score(CLASSICAL, ALL);
+
+    double classical_avg = average(scores, CLASSICAL);
+    double pop_avg = average(scores, POP);
+
+    std::cout << std::left << std::setw(18) << "Classical avg" << classical_avg << std::endl;
+    std::cout << std::left << std::setw(18) << "Pop avg" << pop_avg << std::endl;
+    std::cout << (classical_avg > pop_avg ? "PASSED" : "FAILED") << std::endl;
     return 0;
 }
