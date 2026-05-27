@@ -11,7 +11,6 @@
 struct TrieNode
 {
     std::map<Token, int> counts;
-    int total_count = 0;
     std::map<Token, std::unique_ptr<TrieNode>> children;
 };
 

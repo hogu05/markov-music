@@ -6,11 +6,7 @@ void MarkovTrie::insert(std::span<const Token> history, Token next_token)
 {
     TrieNode* current_node = root.get();
 
-    auto update_counts = [&](TrieNode* node)
-    {
-        node->counts[next_token]++;
-        node->total_count++;
-    };
+    auto update_counts = [&](TrieNode* node) { node->counts[next_token]++; };
 
     update_counts(current_node);
 
