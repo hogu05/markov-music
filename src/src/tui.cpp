@@ -117,6 +117,8 @@ void Tui::generate_track()
         return;
     }
 
+    info_line = "Generating...";
+    update_screen();
     std::mt19937 rng(std::random_device{}());
     Track track = model.generate_track(rng);
     if (track.empty())

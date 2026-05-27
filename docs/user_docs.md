@@ -46,6 +46,8 @@ The program presents a menu:
 
 > When asked for a path, leaving the path empty cancels the current operation.
 
+![Demo](demo.gif)
+
 ## Data
 
 The `data/` directory contains MIDI piano tracks of 10 artists, split into `train/` (hundreds per artist) and `test/` (20 per artist) with no overlap.
