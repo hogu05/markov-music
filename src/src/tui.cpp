@@ -31,7 +31,7 @@ void Tui::run()
                 score();
                 break;
             case 4:
-                reset();
+                clear();
                 break;
             default:
                 info_line = "Invalid option";
@@ -64,8 +64,8 @@ void Tui::print_menu()
     std::cout << "1. Train" << std::endl;
     std::cout << "2. Generate" << std::endl;
     std::cout << "3. Score" << std::endl;
-    std::cout << "4. Reset model" << std::endl;
-    std::cout << "0. Exit" << std::endl;
+    std::cout << "4. Clear model" << std::endl;
+    std::cout << "0. Quit" << std::endl;
 }
 
 void Tui::train()
@@ -181,10 +181,10 @@ void Tui::score()
     }
 }
 
-void Tui::reset()
+void Tui::clear()
 {
     model = MusicModel{};
-    info_line = "Model reset";
+    info_line = "Model cleared";
 }
 
 std::string Tui::ask_path(const std::string& prompt)

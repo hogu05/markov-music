@@ -19,7 +19,7 @@ class Tui
     void train();
     void generate_track();
     void score();
-    void reset();
+    void clear();
 };
 
 #endif
