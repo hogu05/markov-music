@@ -75,5 +75,3 @@ Two tests are run:
 - **Genre recognition** - trains on classical composers and checks that their tracks score higher on average than pop tracks
 
 The tests should take a few minutes.
-
-TODO: Windows
