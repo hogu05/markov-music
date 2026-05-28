@@ -1,7 +1,9 @@
 #include "midi_processor.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <compare>
 
 #include "MidiFile.h"
 
