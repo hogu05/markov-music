@@ -18,6 +18,19 @@ struct Token
 
 using Track = std::vector<Token>;
 
+struct Note
+{
+    Unit start;
+    Pitch pitch;
+    Unit duration;
+    std::strong_ordering operator<=>(const Note&) const = default; // TODO: maybe just >
+};
+
+using Notes = std::vector<Note>;
+
+Track notes_to_track(const Notes& notes);
+
+constexpr Unit UNITS_PER_QUARTER = 4;
 constexpr Pitch START_PITCH = 60;
 constexpr Pitch MAX_PITCH = 127;
 constexpr Unit END_WAIT = -1;
