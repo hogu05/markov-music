@@ -4,28 +4,12 @@
 #include <map>
 
 #include "binary_utils.hpp"
-
-constexpr int CHUNK_ID_BYTES = 4;
-constexpr int MTHD_PREAMBLE_SIZE = 6;
-
-static constexpr uint8_t STATUS_BIT = 0b10000000;
-static constexpr uint8_t EVENT_TYPE_MASK = 0b11110000;
-static constexpr uint8_t NOTE_OFF = 0b10000000;
-static constexpr uint8_t NOTE_ON = 0b10010000;
-static constexpr uint8_t AFTERTOUCH = 0b10100000;
-static constexpr uint8_t CONTROL_CHANGE = 0b10110000;
-static constexpr uint8_t PROGRAM_CHANGE = 0b11000000;
-static constexpr uint8_t CHANNEL_PRESSURE = 0b11010000;
-static constexpr uint8_t PITCH_BEND = 0b11100000;
-static constexpr uint8_t SYSEX = 0b11110000;
-static constexpr uint8_t SYSEX_END = 0b11110111;
-static constexpr uint8_t META = 0b11111111;
-static constexpr uint8_t META_END_OF_TRACK = 0b00101111;
+#include "midi_constants.hpp"
 
 void MidiLoader::read_notes(std::istream& stream, uint16_t ticks_per_quarter, Notes& notes)
 {
-    std::string id(CHUNK_ID_BYTES, '\0');
-    stream.read(id.data(), CHUNK_ID_BYTES);
+    std::string id(midi_constants::MTRK_ID_SIZE, '\0');
+    stream.read(id.data(), midi_constants::MTRK_ID_SIZE);
     if (id != "MTrk")
     {
         return;
@@ -33,6 +17,12 @@ void MidiLoader::read_notes(std::istream& stream, uint16_t ticks_per_quarter, No
 
     auto length = binary_utils::read_big_endian<uint32_t>(stream);
     auto end_position = stream.tellg() + std::streamoff(length);
+
+    auto to_unit = [&](uint32_t ticks)
+    {
+        return static_cast<Unit>(
+            std::round(static_cast<double>(ticks) * UNITS_PER_QUARTER / ticks_per_quarter));
+    };
 
     uint32_t tick = 0;
     uint8_t status = 0;
@@ -44,26 +34,25 @@ void MidiLoader::read_notes(std::istream& stream, uint16_t ticks_per_quarter, No
         tick += binary_utils::read_variable_length(stream);
 
         uint8_t byte = stream.peek();
-        if ((byte & STATUS_BIT) != 0)
+        if ((byte & midi_constants::STATUS_BIT) != 0)
         {
             status = stream.get();
         }
 
-        uint8_t event_type = status & EVENT_TYPE_MASK;
+        uint8_t event_type = status & midi_constants::EVENT_TYPE_MASK;
 
         switch (event_type)
         {
-        case NOTE_ON:
-        case NOTE_OFF:
+        case midi_constants::NOTE_ON:
+        case midi_constants::NOTE_OFF:
         {
             uint8_t pitch = stream.get();
             uint8_t velocity = stream.get();
-            bool is_note_on = (event_type == NOTE_ON) && (velocity > 0);
+            bool is_note_on = (event_type == midi_constants::NOTE_ON) && (velocity > 0);
 
             if (is_note_on)
             {
-                Unit start = static_cast<Unit>(
-                    std::round(static_cast<double>(tick) * UNITS_PER_QUARTER / ticks_per_quarter));
+                Unit start = to_unit(tick);
                 active_notes[pitch] = {tick, notes.size()};
                 notes.push_back({.start = start, .pitch = pitch, .duration = 0});
             }
@@ -72,36 +61,34 @@ void MidiLoader::read_notes(std::istream& stream, uint16_t ticks_per_quarter, No
                 auto it = active_notes.find(pitch);
                 if (it != active_notes.end())
                 {
-                    Unit duration =
-                        static_cast<Unit>(std::round(static_cast<double>(tick - it->second.first) *
-                                                     UNITS_PER_QUARTER / ticks_per_quarter));
+                    Unit duration = to_unit(tick - it->second.first);
                     notes[it->second.second].duration = duration;
                     active_notes.erase(it);
                 }
             }
             break;
         }
-        case AFTERTOUCH:
-        case CONTROL_CHANGE:
-        case PITCH_BEND:
+        case midi_constants::AFTERTOUCH:
+        case midi_constants::CONTROL_CHANGE:
+        case midi_constants::PITCH_BEND:
             stream.ignore(2);
             break;
-        case PROGRAM_CHANGE:
-        case CHANNEL_PRESSURE:
+        case midi_constants::PROGRAM_CHANGE:
+        case midi_constants::CHANNEL_PRESSURE:
             stream.ignore(1);
             break;
         default:
-            if (status == META)
+            if (status == midi_constants::META)
             {
                 uint8_t meta_type = stream.get();
                 uint32_t meta_len = binary_utils::read_variable_length(stream);
                 stream.ignore(meta_len);
-                if (meta_type == META_END_OF_TRACK)
+                if (meta_type == midi_constants::META_END_OF_TRACK)
                 {
                     end_of_track = true;
                 }
             }
-            else if (status == SYSEX || status == SYSEX_END)
+            else if (status == midi_constants::SYSEX || status == midi_constants::SYSEX_END)
             {
                 uint32_t sysex_len = binary_utils::read_variable_length(stream);
                 stream.ignore(sysex_len);
@@ -113,14 +100,14 @@ void MidiLoader::read_notes(std::istream& stream, uint16_t ticks_per_quarter, No
 
 Notes MidiLoader::load(std::istream& stream)
 {
-    std::string id(CHUNK_ID_BYTES, '\0');
-    stream.read(id.data(), CHUNK_ID_BYTES);
+    std::string id(midi_constants::MTHD_ID_SIZE, '\0');
+    stream.read(id.data(), midi_constants::MTHD_ID_SIZE);
     if (id != "MThd")
     {
         return {};
     }
 
-    stream.ignore(MTHD_PREAMBLE_SIZE);
+    stream.ignore(midi_constants::MTHD_HEADER_SIZE);
     auto num_tracks = binary_utils::read_big_endian<uint16_t>(stream);
     auto ticks_per_quarter = binary_utils::read_big_endian<uint16_t>(stream);
 

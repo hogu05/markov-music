@@ -1,7 +1,6 @@
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
-#include <compare>
 #include <vector>
 
 using Unit = int;
@@ -13,7 +12,7 @@ struct Token
     PitchDelta pitch_delta;
     Unit duration;
     Unit wait;
-    std::strong_ordering operator<=>(const Token&) const = default;
+    auto operator<=>(const Token&) const = default;
 };
 
 using Track = std::vector<Token>;
@@ -23,7 +22,7 @@ struct Note
     Unit start;
     Pitch pitch;
     Unit duration;
-    std::strong_ordering operator<=>(const Note&) const = default; // TODO: maybe just >
+    auto operator<=>(const Note&) const = default;
 };
 
 using Notes = std::vector<Note>;
