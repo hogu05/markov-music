@@ -23,7 +23,7 @@ Track notes_to_track(const Notes& notes)
     Track track;
     Pitch prev_pitch = START_PITCH;
 
-    for (size_t i = 0; i < sorted.size(); ++i)
+    for (std::size_t i = 0; i < sorted.size(); ++i)
     {
         const Note& note = sorted[i];
         PitchDelta delta = note.pitch - prev_pitch;
