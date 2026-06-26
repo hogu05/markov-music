@@ -35,14 +35,18 @@ void MidiSaver::save(const Notes& notes, std::ostream& stream)
     for (const auto& note : notes)
     {
         auto pitch = static_cast<uint8_t>(std::clamp(note.pitch, 0, MAX_PITCH));
-        events.push_back({.tick = to_tick(note.start),
+        if (note.duration == 0)
+        {
+            continue;
+        }
+        uint32_t start_tick = to_tick(note.start);
+        uint32_t end_tick = to_tick(note.start + note.duration);
+        events.push_back({.tick = start_tick,
                           .type = midi_constants::NOTE_ON,
                           .pitch = pitch,
                           .velocity = midi_constants::DEFAULT_VELOCITY});
-        events.push_back({.tick = to_tick(note.start + note.duration),
-                          .type = midi_constants::NOTE_OFF,
-                          .pitch = pitch,
-                          .velocity = 0});
+        events.push_back(
+            {.tick = end_tick, .type = midi_constants::NOTE_OFF, .pitch = pitch, .velocity = 0});
     }
 
     std::ranges::sort(events);
