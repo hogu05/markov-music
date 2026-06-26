@@ -1,6 +1,8 @@
 #ifndef MUSIC_MODEL_HPP
 #define MUSIC_MODEL_HPP
 
+#include <istream>
+#include <ostream>
 #include <random>
 
 #include "markov_trie.hpp"
@@ -13,6 +15,8 @@ class MusicModel
     void train(const Track& track);
     Track generate_track(std::mt19937& rng) const;
     double evaluate(const Track& track) const;
+    void save(std::ostream& stream) const;
+    void load(std::istream& stream);
 
   private:
     MarkovTrie markov_trie;

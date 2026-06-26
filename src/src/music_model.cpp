@@ -76,3 +76,13 @@ double MusicModel::evaluate(const Track& track) const
 
     return std::exp(score / static_cast<double>(track.size()));
 }
+
+void MusicModel::save(std::ostream& stream) const
+{
+    markov_trie.save(stream);
+}
+
+void MusicModel::load(std::istream& stream)
+{
+    markov_trie.load(stream);
+}

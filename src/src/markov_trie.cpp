@@ -145,3 +145,52 @@ double MarkovTrie::get_probability(std::span<const Token> history, Pitch current
 
     return total_weight > 0 ? total_score / total_weight : 0.0;
 }
+
+void MarkovTrie::save_node(const TrieNode& node, std::ostream& stream)
+{
+    stream << node.counts.size() << std::endl;
+    for (const auto& [token, count] : node.counts)
+    {
+        stream << token.pitch_delta << ' ' << token.duration << ' ' << token.wait << ' ' << count
+               << std::endl;
+    }
+    stream << node.children.size() << std::endl;
+    for (const auto& [token, child] : node.children)
+    {
+        stream << token.pitch_delta << ' ' << token.duration << ' ' << token.wait << std::endl;
+        save_node(*child, stream);
+    }
+}
+
+TrieNode MarkovTrie::load_node(std::istream& stream)
+{
+    TrieNode node;
+    int counts_size = 0;
+    stream >> counts_size;
+    for (int i = 0; i < counts_size; ++i)
+    {
+        Token token{};
+        int count = 0;
+        stream >> token.pitch_delta >> token.duration >> token.wait >> count;
+        node.counts[token] = count;
+    }
+    int children_size = 0;
+    stream >> children_size;
+    for (int i = 0; i < children_size; ++i)
+    {
+        Token token{};
+        stream >> token.pitch_delta >> token.duration >> token.wait;
+        node.children[token] = std::make_unique<TrieNode>(load_node(stream));
+    }
+    return node;
+}
+
+void MarkovTrie::save(std::ostream& stream) const
+{
+    save_node(*root, stream);
+}
+
+void MarkovTrie::load(std::istream& stream)
+{
+    *root = load_node(stream);
+}
