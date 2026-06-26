@@ -27,11 +27,32 @@ Track notes_to_track(const Notes& notes)
     {
         const Note& note = sorted[i];
         PitchDelta delta = note.pitch - prev_pitch;
-        Unit wait = (i + 1 < sorted.size()) ? snap(sorted[i + 1].start - note.start) : END_WAIT;
+        Unit wait = (i + 1 < sorted.size()) ? snap(sorted[i + 1].start - note.start) : 0;
         track.push_back({.pitch_delta = delta, .duration = snap(note.duration), .wait = wait});
         prev_pitch = note.pitch;
     }
 
     track.push_back(END_TOKEN);
     return track;
+}
+
+Notes track_to_notes(const Track& track)
+{
+    Notes notes;
+    Pitch current_pitch = START_PITCH;
+    Unit current_time = 0;
+
+    for (const auto& token : track)
+    {
+        if (token == END_TOKEN)
+        {
+            break;
+        }
+        current_pitch = std::clamp(current_pitch + token.pitch_delta, 0, MAX_PITCH);
+        notes.push_back(
+            {.start = current_time, .pitch = current_pitch, .duration = token.duration});
+        current_time += token.wait;
+    }
+
+    return notes;
 }

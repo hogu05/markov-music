@@ -1,10 +1,12 @@
 #include "tui.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 
-#include "midi_processor.hpp"
+#include "midi_loader.hpp"
+#include "midi_saver.hpp"
 
 void Tui::run()
 {
@@ -89,7 +91,8 @@ void Tui::train()
     {
         for (const auto& file : std::filesystem::directory_iterator(path))
         {
-            Track track = midi_processor::load_track(file.path().string());
+            std::ifstream midi_stream(file.path(), std::ios::binary);
+            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
             if (!track.empty())
             {
                 model.train(track);
@@ -98,7 +101,8 @@ void Tui::train()
     }
     else
     {
-        Track track = midi_processor::load_track(path);
+        std::ifstream midi_stream(path, std::ios::binary);
+        Track track = notes_to_track(MidiLoader{}.load(midi_stream));
         if (track.empty())
         {
             info_line = "Failed to load file: " + path;
@@ -127,7 +131,8 @@ void Tui::generate_track()
         info_line = "Model not trained";
         return;
     }
-    midi_processor::save_track(track, path);
+    std::ofstream midi_stream(path, std::ios::binary);
+    MidiSaver{}.save(track_to_notes(track), midi_stream);
     info_line = "Generated: " + path;
 }
 
@@ -155,8 +160,8 @@ void Tui::score()
         info_line = "";
         for (const auto& file : std::filesystem::directory_iterator(path))
         {
-            Track track = midi_processor::load_track(file.path().string());
-
+            std::ifstream midi_stream(file.path(), std::ios::binary);
+            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
             if (!track.empty())
             {
                 double score = model.evaluate(track);
@@ -174,7 +179,8 @@ void Tui::score()
     }
     else
     {
-        Track track = midi_processor::load_track(path);
+        std::ifstream midi_stream(path, std::ios::binary);
+        Track track = notes_to_track(MidiLoader{}.load(midi_stream));
         if (track.empty())
         {
             info_line = "Failed to load file: " + path;

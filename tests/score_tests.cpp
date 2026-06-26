@@ -1,10 +1,11 @@
 #include <array>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <vector>
 
-#include "midi_processor.hpp"
+#include "midi_loader.hpp"
 #include "music_model.hpp"
 
 constexpr std::array<std::string, 10> ARTISTS = {
@@ -22,7 +23,8 @@ std::vector<double> score(const std::vector<size_t>& train_ids, const std::vecto
     {
         for (const auto& file : std::filesystem::directory_iterator("data/train/" + ARTISTS.at(id)))
         {
-            Track track = midi_processor::load_track(file.path().string());
+            std::ifstream midi_stream(file.path(), std::ios::binary);
+            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
             if (!track.empty())
             {
                 model.train(track);
@@ -37,7 +39,8 @@ std::vector<double> score(const std::vector<size_t>& train_ids, const std::vecto
         int count = 0;
         for (const auto& file : std::filesystem::directory_iterator("data/test/" + ARTISTS.at(id)))
         {
-            Track track = midi_processor::load_track(file.path().string());
+            std::ifstream midi_stream(file.path(), std::ios::binary);
+            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
             if (!track.empty())
             {
                 sum += model.evaluate(track);
