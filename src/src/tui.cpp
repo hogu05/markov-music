@@ -5,11 +5,19 @@
 #include <iostream>
 #include <string>
 
+#include "abc_saver.hpp"
 #include "midi_loader.hpp"
 #include "midi_saver.hpp"
+#include "note_saver.hpp"
 
 void Tui::run()
 {
+    actions = {
+        {"Load model", [this] { load_model(); }}, {"Train", [this] { train(); }},
+        {"Score", [this] { score(); }},           {"Generate", [this] { generate_track(); }},
+        {"Save model", [this] { save_model(); }}, {"Clear model", [this] { clear(); }},
+    };
+
     info_line = "Welcome to Markov Music!";
 
     for (;;)
@@ -20,25 +28,18 @@ void Tui::run()
         std::getline(std::cin, input);
         try
         {
-            switch (std::stoi(input))
+            int choice = std::stoi(input);
+            if (choice == 0)
             {
-            case 0:
                 return;
-            case 1:
-                train();
-                break;
-            case 2:
-                generate_track();
-                break;
-            case 3:
-                score();
-                break;
-            case 4:
-                clear();
-                break;
-            default:
+            }
+            if (choice >= 1 && choice <= actions.size())
+            {
+                actions[choice - 1].second();
+            }
+            else
+            {
                 info_line = "Invalid option";
-                break;
             }
         }
         catch (const std::invalid_argument&)
@@ -62,26 +63,20 @@ void Tui::update_screen()
     std::cout << "> ";
 }
 
-void Tui::print_menu()
+void Tui::print_menu() const
 {
-    std::cout << "1. Train" << std::endl;
-    std::cout << "2. Generate" << std::endl;
-    std::cout << "3. Score" << std::endl;
-    std::cout << "4. Clear model" << std::endl;
+    for (std::size_t i = 0; i < actions.size(); ++i)
+    {
+        std::cout << (i + 1) << ". " << actions[i].first << std::endl;
+    }
     std::cout << "0. Quit" << std::endl;
 }
 
 void Tui::train()
 {
-    std::string path = ask_path("Enter training path");
+    std::string path = ask_path("Enter training path", true);
     if (path.empty())
     {
-        info_line = "Cancelled";
-        return;
-    }
-    if (!std::filesystem::exists(path))
-    {
-        info_line = "Invalid path: " + path;
         return;
     }
 
@@ -115,10 +110,28 @@ void Tui::train()
 
 void Tui::generate_track()
 {
+    static MidiSaver midi_saver;
+    static AbcSaver abc_saver;
+    static const std::vector<std::pair<std::string, NoteSaver*>> savers = {
+        {"MIDI", &midi_saver},
+        {"ABC", &abc_saver},
+    };
+
+    std::vector<std::string> labels;
+    labels.reserve(savers.size());
+    for (const auto& [label, _] : savers)
+    {
+        labels.push_back(label);
+    }
+
+    int format = ask_option("Select output format", labels);
+    if (format < 0)
+    {
+        return;
+    }
     std::string path = ask_path("Enter output path");
     if (path.empty())
     {
-        info_line = "Cancelled";
         return;
     }
 
@@ -131,22 +144,18 @@ void Tui::generate_track()
         info_line = "Model not trained";
         return;
     }
-    std::ofstream midi_stream(path, std::ios::binary);
-    MidiSaver{}.save(track_to_notes(track), midi_stream);
+    Notes notes = track_to_notes(track);
+    std::ofstream file(path, format == 0 ? std::ios::binary : std::ios::out);
+    savers[format].second->save(notes, file);
     info_line = "Generated: " + path;
 }
 
 void Tui::score()
 {
-    std::string path = ask_path("Enter path to score");
+    // TODO: option
+    std::string path = ask_path("Enter path to score", true);
     if (path.empty())
     {
-        info_line = "Cancelled";
-        return;
-    }
-    if (!std::filesystem::exists(path))
-    {
-        info_line = "Invalid path: " + path;
         return;
     }
 
@@ -196,11 +205,77 @@ void Tui::clear()
     info_line = "Model cleared";
 }
 
-std::string Tui::ask_path(const std::string& prompt)
+void Tui::save_model()
+{
+    std::string path = ask_path("Enter save path");
+    if (path.empty())
+    {
+        return;
+    }
+    std::ofstream file(path);
+    model.save(file);
+    info_line = "Model saved: " + path;
+}
+
+void Tui::load_model()
+{
+    std::string path = ask_path("Enter model path", true);
+    if (path.empty())
+    {
+        return;
+    }
+    std::ifstream file(path);
+    model.load(file);
+    info_line = "Model loaded: " + path;
+}
+
+int Tui::ask_option(const std::string& prompt, const std::vector<std::string>& options)
+{
+    info_line = prompt + "\n";
+    for (std::size_t i = 0; i < options.size(); ++i)
+    {
+        info_line += std::to_string(i + 1) + ". " + options[i] + "\n";
+    }
+    info_line += "0. Cancel";
+    update_screen();
+
+    std::string input;
+    std::getline(std::cin, input);
+    try
+    {
+        int choice = std::stoi(input);
+        if (choice == 0)
+        {
+            info_line = "Cancelled";
+            return -1;
+        }
+        if (choice >= 1 && choice <= options.size())
+        {
+            return choice - 1;
+        }
+    }
+    catch (const std::invalid_argument&)
+    {
+    }
+    info_line = "Invalid option";
+    return -1;
+}
+
+std::string Tui::ask_path(const std::string& prompt, bool check)
 {
     info_line = prompt;
     update_screen();
     std::string path;
     std::getline(std::cin, path);
+    if (path.empty())
+    {
+        info_line = "Cancelled";
+        return "";
+    }
+    if (check && !std::filesystem::exists(path))
+    {
+        info_line = "Invalid path: " + path;
+        return "";
+    }
     return path;
 }
