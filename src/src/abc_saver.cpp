@@ -3,41 +3,43 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <map>
+#include <ranges>
 #include <string>
 
 #include "types.hpp"
 
-static constexpr int BEATS_PER_BAR = 4;
-static constexpr Unit UNITS_PER_BAR = UNITS_PER_QUARTER * BEATS_PER_BAR;
+static constexpr int QUARTERS_PER_BAR = 4;
+static constexpr Unit UNITS_PER_BAR = UNITS_PER_QUARTER * QUARTERS_PER_BAR;
 static constexpr int BARS_PER_LINE = 4;
 static constexpr int SEMITONES_PER_OCTAVE = 12;
 static constexpr int UPPERCASE_OCTAVE = 4;
 static constexpr int LOWERCASE_OCTAVE = 5;
 
-static std::string pitch_to_abc(Pitch pitch)
+static std::string pitch_to_symbol(Pitch pitch)
 {
-    static constexpr std::array<const char*, SEMITONES_PER_OCTAVE> SEMITONE_NAMES = {
+    static constexpr std::array<const char*, SEMITONES_PER_OCTAVE> SEMITONE_SYMBOLS = {
         "C", "^C", "D", "^D", "E", "F", "^F", "G", "^G", "A", "^A", "B"};
 
     int semitone = pitch % SEMITONES_PER_OCTAVE;
     int octave = (pitch / SEMITONES_PER_OCTAVE) - 1;
 
-    std::string abc = SEMITONE_NAMES.at(semitone);
+    std::string symbol = SEMITONE_SYMBOLS.at(semitone);
 
     if (octave >= LOWERCASE_OCTAVE)
     {
-        for (char& c : abc)
+        for (char& c : symbol)
         {
             c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         }
-        abc += std::string(octave - LOWERCASE_OCTAVE, '\'');
+        symbol += std::string(octave - LOWERCASE_OCTAVE, '\'');
     }
     else
     {
-        abc += std::string(UPPERCASE_OCTAVE - octave, ',');
+        symbol += std::string(UPPERCASE_OCTAVE - octave, ',');
     }
 
-    return abc;
+    return symbol;
 }
 
 void AbcSaver::save(const Notes& notes, std::ostream& stream)
@@ -53,36 +55,28 @@ void AbcSaver::save(const Notes& notes, std::ostream& stream)
         return;
     }
 
-    Notes sorted = notes;
-    std::ranges::sort(sorted);
-
-    Unit time_written = 0;
+    Unit time = 0;
     int bars_on_line = 0;
 
-    auto write_symbol = [&](const std::string& symbol, Unit duration, bool tie)
+    auto write_symbol = [&](const std::string& symbol, Unit duration, bool continuation = false)
     {
         while (duration > 0)
         {
-            Unit bar_end = ((time_written / UNITS_PER_BAR) + 1) * UNITS_PER_BAR;
-            Unit chunk = std::min(duration, bar_end - time_written);
+            Unit bar_end = ((time / UNITS_PER_BAR) + 1) * UNITS_PER_BAR;
+            Unit chunk = std::min(duration, bar_end - time);
 
-            stream << symbol;
-            if (chunk != 1)
-            {
-                stream << chunk;
-            }
-
-            time_written += chunk;
+            stream << symbol << chunk;
+            time += chunk;
             duration -= chunk;
 
-            if (time_written == bar_end)
+            if (time == bar_end)
             {
-                if (duration > 0 && tie)
+                if ((duration > 0 && symbol != "z") || continuation)
                 {
                     stream << '-';
                 }
                 bars_on_line++;
-                if (bars_on_line % BARS_PER_LINE == 0)
+                if (bars_on_line == BARS_PER_LINE)
                 {
                     stream << "|" << std::endl;
                     bars_on_line = 0;
@@ -92,25 +86,68 @@ void AbcSaver::save(const Notes& notes, std::ostream& stream)
                     stream << " | ";
                 }
             }
+            else if (duration == 0 && continuation)
+            {
+                stream << '-';
+            }
         }
     };
 
-    for (const auto& note : sorted)
+    std::multimap<Unit, std::pair<Pitch, Unit>> queue;
+    for (const auto& note : notes)
     {
-        if (note.start < time_written || note.duration == 0)
+        if (note.duration > 0)
         {
-            continue;
+            queue.emplace(note.start, std::make_pair(note.pitch, note.duration));
         }
-
-        if (note.start > time_written)
-        {
-            write_symbol("z", note.start - time_written, false);
-        }
-
-        write_symbol(pitch_to_abc(note.pitch), note.duration, true);
     }
 
-    if (time_written % UNITS_PER_BAR != 0)
+    while (!queue.empty())
+    {
+        Unit start = queue.begin()->first;
+
+        if (start > time)
+        {
+            write_symbol("z", start - time);
+        }
+
+        auto [range_begin, range_end] = queue.equal_range(start);
+        auto group = std::ranges::subrange(range_begin, range_end) | std::views::values |
+                     std::ranges::to<std::vector>();
+        queue.erase(range_begin, range_end);
+
+        Unit min_duration = std::ranges::min(group, {}, &std::pair<Pitch, Unit>::second).second;
+
+        bool has_continuation =
+            std::ranges::any_of(group, [&](const auto& p) { return p.second > min_duration; });
+
+        std::string symbol;
+        if (group.size() == 1)
+        {
+            symbol = pitch_to_symbol(group[0].first);
+        }
+        else
+        {
+            symbol = "[";
+            for (const Pitch pitch : group | std::views::keys)
+            {
+                symbol += pitch_to_symbol(pitch);
+            }
+            symbol += "]";
+        }
+
+        write_symbol(symbol, min_duration, has_continuation);
+
+        for (const auto& [pitch, duration] : group)
+        {
+            if (duration > min_duration)
+            {
+                queue.emplace(start + min_duration, std::make_pair(pitch, duration - min_duration));
+            }
+        }
+    }
+
+    if (time % UNITS_PER_BAR != 0)
     {
         stream << "|" << std::endl;
     }
