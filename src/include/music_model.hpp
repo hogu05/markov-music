@@ -15,6 +15,7 @@ class MusicModel
     void train(const Track& track);
     Track generate_track(std::mt19937& rng) const;
     double evaluate(const Track& track) const;
+    bool empty() const;
     void save(std::ostream& stream) const;
     void load(std::istream& stream);
 

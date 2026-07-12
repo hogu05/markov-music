@@ -22,6 +22,7 @@ class MarkovTrie
     Token predict(std::span<const Token> history, Pitch current_pitch, std::mt19937& rng) const;
     double get_probability(std::span<const Token> history, Pitch current_pitch,
                            Token next_token) const;
+    bool empty() const;
     void save(std::ostream& stream) const;
     void load(std::istream& stream);
 

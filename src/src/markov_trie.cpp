@@ -2,6 +2,11 @@
 
 #include <ranges>
 
+bool MarkovTrie::empty() const
+{
+    return root->counts.empty();
+}
+
 void MarkovTrie::insert(std::span<const Token> history, Token next_token)
 {
     TrieNode* current_node = root.get();

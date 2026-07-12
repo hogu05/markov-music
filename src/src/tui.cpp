@@ -187,15 +187,15 @@ void Tui::generate_track()
         return;
     }
 
-    info_line = "Generating...";
-    update_screen();
-    std::mt19937 rng(std::random_device{}());
-    Track track = model.generate_track(rng);
-    if (track.empty())
+    if (model.empty())
     {
         info_line = "Model not trained";
         return;
     }
+    info_line = "Generating...";
+    update_screen();
+    std::mt19937 rng(std::random_device{}());
+    Track track = model.generate_track(rng);
     Notes notes = track_to_notes(track);
     std::ofstream file(path, format == 0 ? std::ios::binary : std::ios::out);
     savers[format].second->save(notes, file);
@@ -204,6 +204,11 @@ void Tui::generate_track()
 
 void Tui::score()
 {
+    if (model.empty())
+    {
+        info_line = "Model not trained";
+        return;
+    }
     std::string path = ask_path("Enter path to score", true);
     if (path.empty())
     {
@@ -276,6 +281,11 @@ void Tui::clear()
 
 void Tui::save_model()
 {
+    if (model.empty())
+    {
+        info_line = "Model not trained";
+        return;
+    }
     std::string path = ask_path("Enter save path");
     if (path.empty())
     {
@@ -295,6 +305,11 @@ void Tui::load_model()
     }
     std::ifstream file(path);
     model.load(file);
+    if (model.empty())
+    {
+        info_line = "Failed to load model: " + path;
+        return;
+    }
     info_line = "Model loaded: " + path;
 }
 
