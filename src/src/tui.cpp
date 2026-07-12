@@ -8,10 +8,35 @@
 #include "abc_saver.hpp"
 #include "midi_loader.hpp"
 #include "midi_saver.hpp"
+#include "note_loader.hpp"
 #include "note_saver.hpp"
+#include "plain_loader.hpp"
+#include "plain_saver.hpp"
+
+static NoteLoader* get_loader_for_extension(const std::string& ext)
+{
+    static MidiLoader midi_loader;
+    static PlainLoader plain_loader;
+    if (ext == ".mid" || ext == ".midi")
+    {
+        return &midi_loader;
+    }
+    if (ext == ".notes")
+    {
+        return &plain_loader;
+    }
+    return nullptr;
+}
+
+static std::ios::openmode open_flags_for_extension(const std::string& ext)
+{
+    return (ext == ".mid" || ext == ".midi") ? std::ios::binary : std::ios::in;
+}
 
 void Tui::run()
 {
+    std::cout << "\033[?1049h";
+
     actions = {
         {"Load model", [this] { load_model(); }}, {"Train", [this] { train(); }},
         {"Score", [this] { score(); }},           {"Generate", [this] { generate_track(); }},
@@ -31,7 +56,7 @@ void Tui::run()
             int choice = std::stoi(input);
             if (choice == 0)
             {
-                return;
+                break;
             }
             if (choice >= 1 && choice <= actions.size())
             {
@@ -47,6 +72,8 @@ void Tui::run()
             info_line = "Enter a number";
         }
     }
+
+    std::cout << "\033[?1049l";
 }
 
 void Tui::clear_screen()
@@ -80,41 +107,66 @@ void Tui::train()
         return;
     }
 
+    int trained = 0;
+    int total = 0;
+
+    auto train_file = [&](const std::filesystem::path& file_path)
+    {
+        std::string ext = file_path.extension().string();
+        NoteLoader* loader = get_loader_for_extension(ext);
+        if (loader == nullptr)
+        {
+            return;
+        }
+        total++;
+        std::ifstream stream(file_path, open_flags_for_extension(ext));
+        Track track = notes_to_track(loader->load(stream));
+        if (!track.empty())
+        {
+            model.train(track);
+            trained++;
+        }
+    };
+
     info_line = "Training...";
     update_screen();
+
     if (std::filesystem::is_directory(path))
     {
+        std::filesystem::directory_iterator dir(path);
+        std::size_t file_count = std::distance(begin(dir), end(dir));
+        std::size_t current = 0;
         for (const auto& file : std::filesystem::directory_iterator(path))
         {
-            std::ifstream midi_stream(file.path(), std::ios::binary);
-            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
-            if (!track.empty())
-            {
-                model.train(track);
-            }
+            info_line =
+                "Training " + std::to_string(++current) + "/" + std::to_string(file_count) + "...";
+            update_screen();
+            train_file(file.path());
         }
+        info_line =
+            "Trained on " + std::to_string(trained) + "/" + std::to_string(total) + " files";
     }
     else
     {
-        std::ifstream midi_stream(path, std::ios::binary);
-        Track track = notes_to_track(MidiLoader{}.load(midi_stream));
-        if (track.empty())
+        train_file(path);
+        if (trained == 0)
         {
             info_line = "Failed to load file: " + path;
             return;
         }
-        model.train(track);
+        info_line = "Training complete";
     }
-    info_line = "Training complete";
 }
 
 void Tui::generate_track()
 {
     static MidiSaver midi_saver;
     static AbcSaver abc_saver;
+    static PlainSaver plain_saver;
     static const std::vector<std::pair<std::string, NoteSaver*>> savers = {
-        {"MIDI", &midi_saver},
-        {"ABC", &abc_saver},
+        {"MIDI (.mid)", &midi_saver},
+        {"ABC (.abc)", &abc_saver},
+        {"Plain (.notes)", &plain_saver},
     };
 
     std::vector<std::string> labels;
@@ -152,12 +204,28 @@ void Tui::generate_track()
 
 void Tui::score()
 {
-    // TODO: option
     std::string path = ask_path("Enter path to score", true);
     if (path.empty())
     {
         return;
     }
+
+    auto score_file = [&](const std::filesystem::path& file_path)
+    {
+        std::string ext = file_path.extension().string();
+        NoteLoader* loader = get_loader_for_extension(ext);
+        if (loader == nullptr)
+        {
+            return -1.0;
+        }
+        std::ifstream stream(file_path, open_flags_for_extension(ext));
+        Track track = notes_to_track(loader->load(stream));
+        if (track.empty())
+        {
+            return -1.0;
+        }
+        return model.evaluate(track);
+    };
 
     info_line = "Scoring...";
     update_screen();
@@ -169,18 +237,20 @@ void Tui::score()
         info_line = "";
         for (const auto& file : std::filesystem::directory_iterator(path))
         {
-            std::ifstream midi_stream(file.path(), std::ios::binary);
-            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
-            if (!track.empty())
+            double score = score_file(file.path());
+            if (score >= 0.0)
             {
-                double score = model.evaluate(track);
                 info_line += file.path().filename().string() + ": " + std::to_string(score) + "\n";
                 update_screen();
                 sum += score;
                 count++;
             }
+            else
+            {
+                info_line += file.path().filename().string() + ": FAILED\n";
+                update_screen();
+            }
         }
-
         if (count > 0)
         {
             info_line += "Average: " + std::to_string(sum / count);
@@ -188,14 +258,13 @@ void Tui::score()
     }
     else
     {
-        std::ifstream midi_stream(path, std::ios::binary);
-        Track track = notes_to_track(MidiLoader{}.load(midi_stream));
-        if (track.empty())
+        double score = score_file(path);
+        if (score < 0.0)
         {
             info_line = "Failed to load file: " + path;
             return;
         }
-        info_line = "Score: " + std::to_string(model.evaluate(track));
+        info_line = "Score: " + std::to_string(score);
     }
 }
 
