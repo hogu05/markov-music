@@ -5,33 +5,7 @@
 #include <iostream>
 #include <string>
 
-#include "abc_saver.hpp"
-#include "midi_loader.hpp"
-#include "midi_saver.hpp"
-#include "note_loader.hpp"
-#include "note_saver.hpp"
-#include "plain_loader.hpp"
-#include "plain_saver.hpp"
-
-static NoteLoader* get_loader_for_extension(const std::string& ext)
-{
-    static MidiLoader midi_loader;
-    static PlainLoader plain_loader;
-    if (ext == ".mid" || ext == ".midi")
-    {
-        return &midi_loader;
-    }
-    if (ext == ".notes")
-    {
-        return &plain_loader;
-    }
-    return nullptr;
-}
-
-static std::ios::openmode open_flags_for_extension(const std::string& ext)
-{
-    return (ext == ".mid" || ext == ".midi") ? std::ios::binary : std::ios::in;
-}
+#include "formats.hpp"
 
 void Tui::run()
 {
@@ -112,14 +86,15 @@ void Tui::train()
 
     auto train_file = [&](const std::filesystem::path& file_path)
     {
-        std::string ext = file_path.extension().string();
-        NoteLoader* loader = get_loader_for_extension(ext);
-        if (loader == nullptr)
+        auto maybe_format = formats::format_from_extension(file_path.extension().string());
+        if (!maybe_format)
         {
             return;
         }
         total++;
-        std::ifstream stream(file_path, open_flags_for_extension(ext));
+        formats::Format format = maybe_format.value();
+        NoteLoader* loader = formats::get_loader(format);
+        std::ifstream stream(file_path, formats::open_flags(format));
         Track track = notes_to_track(loader->load(stream));
         if (!track.empty())
         {
@@ -160,24 +135,21 @@ void Tui::train()
 
 void Tui::generate_track()
 {
-    static MidiSaver midi_saver;
-    static AbcSaver abc_saver;
-    static PlainSaver plain_saver;
-    static const std::vector<std::pair<std::string, NoteSaver*>> savers = {
-        {"MIDI (.mid)", &midi_saver},
-        {"ABC (.abc)", &abc_saver},
-        {"Plain (.notes)", &plain_saver},
+    static const std::vector<std::pair<std::string, formats::Format>> options = {
+        {"MIDI (.mid)", formats::Format::Midi},
+        {"ABC (.abc)", formats::Format::Abc},
+        {"Plain (.notes)", formats::Format::Plain},
     };
 
     std::vector<std::string> labels;
-    labels.reserve(savers.size());
-    for (const auto& [label, _] : savers)
+    labels.reserve(options.size());
+    for (const auto& [label, _] : options)
     {
         labels.push_back(label);
     }
 
-    int format = ask_option("Select output format", labels);
-    if (format < 0)
+    int choice = ask_option("Select output format", labels);
+    if (choice < 0)
     {
         return;
     }
@@ -192,13 +164,14 @@ void Tui::generate_track()
         info_line = "Model not trained";
         return;
     }
+    formats::Format format = options[choice].second;
     info_line = "Generating...";
     update_screen();
     std::mt19937 rng(std::random_device{}());
     Track track = model.generate_track(rng);
     Notes notes = track_to_notes(track);
-    std::ofstream file(path, format == 0 ? std::ios::binary : std::ios::out);
-    savers[format].second->save(notes, file);
+    std::ofstream file(path, formats::open_flags(format));
+    formats::get_saver(format)->save(notes, file);
     info_line = "Generated: " + path;
 }
 
@@ -217,13 +190,14 @@ void Tui::score()
 
     auto score_file = [&](const std::filesystem::path& file_path)
     {
-        std::string ext = file_path.extension().string();
-        NoteLoader* loader = get_loader_for_extension(ext);
-        if (loader == nullptr)
+        auto maybe_format = formats::format_from_extension(file_path.extension().string());
+        if (!maybe_format)
         {
             return -1.0;
         }
-        std::ifstream stream(file_path, open_flags_for_extension(ext));
+        formats::Format format = maybe_format.value();
+        NoteLoader* loader = formats::get_loader(format);
+        std::ifstream stream(file_path, formats::open_flags(format));
         Track track = notes_to_track(loader->load(stream));
         if (track.empty())
         {
