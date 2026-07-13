@@ -11,7 +11,7 @@
 namespace formats
 {
 
-enum class Format
+enum class Format : std::uint8_t
 {
     Midi,
     Abc,
@@ -20,7 +20,8 @@ enum class Format
 
 NoteLoader* get_loader(Format format);
 NoteSaver* get_saver(Format format);
-std::optional<Format> format_from_extension(const std::string& ext);
+std::optional<Format> format_from_extension(const std::string& extension);
+std::optional<Format> format_from_string(const std::string& string);
 std::ios::openmode open_flags(Format format);
 
 } // namespace formats

@@ -40,22 +40,39 @@ NoteSaver* get_saver(Format format)
     }
 }
 
+std::optional<Format> format_from_string(const std::string& string)
+{
+    if (string == "midi")
+    {
+        return Format::Midi;
+    }
+    if (string == "abc")
+    {
+        return Format::Abc;
+    }
+    if (string == "plain")
+    {
+        return Format::Plain;
+    }
+    return std::nullopt;
+}
+
 std::ios::openmode open_flags(Format format)
 {
     return format == Format::Midi ? std::ios::binary : std::ios::in;
 }
 
-std::optional<Format> format_from_extension(const std::string& ext)
+std::optional<Format> format_from_extension(const std::string& extension)
 {
-    if (ext == ".mid" || ext == ".midi")
+    if (extension == ".mid" || extension == ".midi")
     {
         return Format::Midi;
     }
-    if (ext == ".abc")
+    if (extension == ".abc")
     {
         return Format::Abc;
     }
-    if (ext == ".notes")
+    if (extension == ".notes")
     {
         return Format::Plain;
     }

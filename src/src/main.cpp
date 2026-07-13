@@ -1,13 +1,14 @@
-#include <iostream>
-
+#include "cli.hpp"
 #include "tui.hpp"
 
-int main()
+int main(int argc, char* argv[])
 {
-    std::cout << "\033[?1049h";
-    Tui tui;
-    tui.run();
-    std::cout << "\033[?1049l";
+    if (argc > 1)
+    {
+        return cli::run({argv, argv + argc});
+    }
+
+    Tui{}.run();
 
     return 0;
 }
