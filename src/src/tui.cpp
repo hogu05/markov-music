@@ -260,6 +260,8 @@ void Tui::merge_model()
     {
         return;
     }
+    info_line = "Merging...";
+    update_screen();
     MusicModel other;
     std::ifstream file(path);
     other.load(file);
@@ -290,6 +292,8 @@ void Tui::save_model()
     {
         return;
     }
+    info_line = "Saving...";
+    update_screen();
     std::ofstream file(path);
     model.save(file);
     info_line = "Model saved: " + path;
@@ -302,6 +306,8 @@ void Tui::load_model()
     {
         return;
     }
+    info_line = "Loading...";
+    update_screen();
     std::ifstream file(path);
     model.load(file);
     if (model.empty())

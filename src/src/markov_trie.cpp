@@ -221,16 +221,16 @@ double MarkovTrie::get_probability(std::span<const Token> history, Pitch current
 
 void MarkovTrie::save_node(const TrieNode& node, std::ostream& stream)
 {
-    stream << node.counts.size() << std::endl;
+    stream << node.counts.size() << '\n';
     for (const auto& [token, count] : node.counts)
     {
         stream << token.pitch_delta << ' ' << token.duration << ' ' << token.wait << ' ' << count
-               << std::endl;
+               << '\n';
     }
-    stream << node.children.size() << std::endl;
+    stream << node.children.size() << '\n';
     for (const auto& [token, child] : node.children)
     {
-        stream << token.pitch_delta << ' ' << token.duration << ' ' << token.wait << std::endl;
+        stream << token.pitch_delta << ' ' << token.duration << ' ' << token.wait << '\n';
         save_node(*child, stream);
     }
 }
