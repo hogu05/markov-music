@@ -14,7 +14,8 @@ void Tui::run()
     actions = {
         {"Load model", [this] { load_model(); }}, {"Train", [this] { train(); }},
         {"Score", [this] { score(); }},           {"Generate", [this] { generate_track(); }},
-        {"Save model", [this] { save_model(); }}, {"Clear model", [this] { clear(); }},
+        {"Save model", [this] { save_model(); }}, {"Merge model", [this] { merge_model(); }},
+        {"Clear model", [this] { clear(); }},
     };
 
     info_line = "Welcome to Markov Music!";
@@ -245,6 +246,30 @@ void Tui::score()
         }
         info_line = "Score: " + std::to_string(score);
     }
+}
+
+void Tui::merge_model()
+{
+    if (model.empty())
+    {
+        info_line = "Model not trained";
+        return;
+    }
+    std::string path = ask_path("Enter model path to merge", true);
+    if (path.empty())
+    {
+        return;
+    }
+    MusicModel other;
+    std::ifstream file(path);
+    other.load(file);
+    if (other.empty())
+    {
+        info_line = "Failed to load model: " + path;
+        return;
+    }
+    model = model + other;
+    info_line = "Model merged: " + path;
 }
 
 void Tui::clear()

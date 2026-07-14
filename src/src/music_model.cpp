@@ -82,6 +82,13 @@ bool MusicModel::empty() const
     return markov_trie.empty();
 }
 
+MusicModel MusicModel::operator+(const MusicModel& other) const
+{
+    MusicModel result;
+    result.markov_trie = markov_trie + other.markov_trie;
+    return result;
+}
+
 bool MusicModel::operator==(const MusicModel& other) const
 {
     return markov_trie == other.markov_trie;

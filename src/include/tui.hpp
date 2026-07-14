@@ -30,6 +30,7 @@ class Tui
     void clear();
     void save_model();
     void load_model();
+    void merge_model();
 };
 
 #endif

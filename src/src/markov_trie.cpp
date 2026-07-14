@@ -1,12 +1,80 @@
 #include "markov_trie.hpp"
 
+#include <algorithm>
 #include <ranges>
+
+TrieNode::TrieNode(const TrieNode& other) : counts(other.counts)
+{
+    for (const auto& [token, child] : other.children)
+    {
+        children[token] = std::make_unique<TrieNode>(*child);
+    }
+}
+
+TrieNode& TrieNode::operator=(const TrieNode& other)
+{
+    if (this != &other)
+    {
+        counts = other.counts;
+        children.clear();
+        for (const auto& [token, child] : other.children)
+        {
+            children[token] = std::make_unique<TrieNode>(*child);
+        }
+    }
+    return *this;
+}
+
+TrieNode TrieNode::operator+(const TrieNode& other) const
+{
+    TrieNode result;
+    result.counts = counts;
+    for (const auto& [token, count] : other.counts)
+    {
+        result.counts[token] += count;
+    }
+    for (const auto& [token, child] : children)
+    {
+        result.children[token] = std::make_unique<TrieNode>(*child);
+    }
+    for (const auto& [token, child] : other.children)
+    {
+        auto it = result.children.find(token);
+        if (it == result.children.end())
+        {
+            result.children[token] = std::make_unique<TrieNode>(*child);
+        }
+        else
+        {
+            *it->second = *it->second + *child;
+        }
+    }
+    return result;
+}
+
+bool TrieNode::operator==(const TrieNode& other) const
+{
+    return counts == other.counts &&
+           std::ranges::equal(children, other.children, [](const auto& a, const auto& b)
+                              { return a.first == b.first && *a.second == *b.second; });
+}
+
+bool MarkovTrie::operator==(const MarkovTrie& other) const
+{
+    return *root == *other.root;
+}
+
+MarkovTrie MarkovTrie::operator+(const MarkovTrie& other) const
+{
+    MarkovTrie result;
+    *result.root = *root + *other.root;
+    return result;
+}
 
 bool MarkovTrie::empty() const
 {
     return root->counts.empty();
 }
-
 void MarkovTrie::insert(std::span<const Token> history, Token next_token)
 {
     TrieNode* current_node = root.get();
