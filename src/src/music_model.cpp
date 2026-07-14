@@ -87,7 +87,7 @@ std::size_t MusicModel::size() const
     return markov_trie.size();
 }
 
-void MusicModel::prune(double threshold)
+void MusicModel::prune(int threshold)
 {
     markov_trie.prune(threshold);
 }

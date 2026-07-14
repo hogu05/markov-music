@@ -177,10 +177,10 @@ int prune(const std::vector<std::string>& args)
         std::cerr << "Failed to load model: " << args[2] << std::endl;
         return 1;
     }
-    double threshold = 0.0;
+    int threshold = 0;
     try
     {
-        threshold = std::stod(args[3]);
+        threshold = std::stoi(args[3]);
     }
     catch (const std::invalid_argument&)
     {

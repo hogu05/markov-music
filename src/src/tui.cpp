@@ -260,7 +260,7 @@ void Tui::prune_model()
         info_line = "Model not trained";
         return;
     }
-    auto threshold = ask_double("Enter threshold (0.0 - 1.0)");
+    auto threshold = ask_int("Enter minimum count threshold");
     if (!threshold)
     {
         return;
@@ -375,7 +375,7 @@ int Tui::ask_option(const std::string& prompt, const std::vector<std::string>& o
     return -1;
 }
 
-std::optional<double> Tui::ask_double(const std::string& prompt)
+std::optional<int> Tui::ask_int(const std::string& prompt)
 {
     info_line = prompt;
     update_screen();
@@ -383,7 +383,7 @@ std::optional<double> Tui::ask_double(const std::string& prompt)
     std::getline(std::cin, input);
     try
     {
-        return std::stod(input);
+        return std::stoi(input);
     }
     catch (const std::invalid_argument&)
     {

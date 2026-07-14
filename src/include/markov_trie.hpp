@@ -32,7 +32,7 @@ class MarkovTrie
                            Token next_token) const;
     bool empty() const;
     std::size_t size() const;
-    void prune(double threshold);
+    void prune(int threshold);
     MarkovTrie operator+(const MarkovTrie& other) const;
     bool operator==(const MarkovTrie& other) const;
     void save(std::ostream& stream) const;

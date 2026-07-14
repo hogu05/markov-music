@@ -17,7 +17,7 @@ class MusicModel
     double evaluate(const Track& track) const;
     bool empty() const;
     std::size_t size() const;
-    void prune(double threshold);
+    void prune(int threshold);
     MusicModel operator+(const MusicModel& other) const;
     bool operator==(const MusicModel& other) const;
     void save(std::ostream& stream) const;

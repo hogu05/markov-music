@@ -23,7 +23,7 @@ class Tui
     static void clear_screen();
     void print_menu() const;
     std::string ask_path(const std::string& prompt, bool check = false);
-    std::optional<double> ask_double(const std::string& prompt);
+    std::optional<int> ask_int(const std::string& prompt);
     int ask_option(const std::string& prompt, const std::vector<std::string>& options);
     void update_screen();
     void train();
