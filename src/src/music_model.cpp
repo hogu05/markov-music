@@ -82,6 +82,11 @@ bool MusicModel::empty() const
     return markov_trie.empty();
 }
 
+bool MusicModel::operator==(const MusicModel& other) const
+{
+    return markov_trie == other.markov_trie;
+}
+
 void MusicModel::save(std::ostream& stream) const
 {
     markov_trie.save(stream);

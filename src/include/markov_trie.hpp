@@ -1,6 +1,7 @@
 #ifndef MARKOV_TRIE_HPP
 #define MARKOV_TRIE_HPP
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -13,6 +14,13 @@ struct TrieNode
 {
     std::map<Token, int> counts;
     std::map<Token, std::unique_ptr<TrieNode>> children;
+
+    bool operator==(const TrieNode& other) const
+    {
+        return counts == other.counts &&
+               std::ranges::equal(children, other.children, [](const auto& a, const auto& b)
+                                  { return a.first == b.first && *a.second == *b.second; });
+    }
 };
 
 class MarkovTrie
@@ -23,6 +31,10 @@ class MarkovTrie
     double get_probability(std::span<const Token> history, Pitch current_pitch,
                            Token next_token) const;
     bool empty() const;
+    bool operator==(const MarkovTrie& other) const
+    {
+        return *root == *other.root;
+    }
     void save(std::ostream& stream) const;
     void load(std::istream& stream);
 

@@ -2,8 +2,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <vector>
+
+#include "test_utils.hpp"
 
 #include "midi_loader.hpp"
 #include "music_model.hpp"
@@ -18,13 +19,14 @@ const std::vector<size_t> POP = {7, 2, 4, 9};
 
 std::vector<double> score(const std::vector<size_t>& train_ids, const std::vector<size_t>& test_ids)
 {
+    MidiLoader loader;
     MusicModel model;
     for (size_t id : train_ids)
     {
         for (const auto& file : std::filesystem::directory_iterator("data/train/" + ARTISTS.at(id)))
         {
             std::ifstream midi_stream(file.path(), std::ios::binary);
-            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
+            Track track = notes_to_track(loader.load(midi_stream));
             if (!track.empty())
             {
                 model.train(track);
@@ -40,7 +42,7 @@ std::vector<double> score(const std::vector<size_t>& train_ids, const std::vecto
         for (const auto& file : std::filesystem::directory_iterator("data/test/" + ARTISTS.at(id)))
         {
             std::ifstream midi_stream(file.path(), std::ios::binary);
-            Track track = notes_to_track(MidiLoader{}.load(midi_stream));
+            Track track = notes_to_track(loader.load(midi_stream));
             if (!track.empty())
             {
                 sum += model.evaluate(track);
@@ -91,7 +93,7 @@ int main()
                   << "| " << (passed ? "PASS" : "FAIL") << std::endl;
     }
 
-    std::cout << (artist_recognition_passed ? "PASSED" : "FAILED") << std::endl;
+    check(artist_recognition_passed, "ARTIST RECOGNITION");
 
     std::cout << std::endl;
 
@@ -103,6 +105,6 @@ int main()
 
     std::cout << std::left << std::setw(18) << "Classical avg" << classical_avg << std::endl;
     std::cout << std::left << std::setw(18) << "Pop avg" << pop_avg << std::endl;
-    std::cout << (classical_avg > pop_avg ? "PASSED" : "FAILED") << std::endl;
+    check(classical_avg > pop_avg, "GENRE RECOGNITION");
     return 0;
 }

@@ -12,3 +12,4 @@ list(REMOVE_ITEM MY_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/midi_processor.cpp"
 add_executable(markov-music src/main.cpp ${MY_SOURCES})
 
 add_executable(score-tests ../tests/score_tests.cpp ${MY_SOURCES})
+add_executable(unit-tests ../tests/unit_tests.cpp ${MY_SOURCES})
