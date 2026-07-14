@@ -31,6 +31,8 @@ class MarkovTrie
     double get_probability(std::span<const Token> history, Pitch current_pitch,
                            Token next_token) const;
     bool empty() const;
+    std::size_t size() const;
+    void prune(double threshold);
     MarkovTrie operator+(const MarkovTrie& other) const;
     bool operator==(const MarkovTrie& other) const;
     void save(std::ostream& stream) const;

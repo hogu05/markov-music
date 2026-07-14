@@ -22,6 +22,8 @@ void help()
               << "Generate a track (midi, abc, plain)" << std::endl
               << std::setw(COLUMN_WIDTH) << "score <model_path> <input_path>"
               << "Score a file or directory" << std::endl
+              << std::setw(COLUMN_WIDTH) << "prune <model_path> <threshold> <output_path>"
+              << "Prune rare transitions" << std::endl
               << std::setw(COLUMN_WIDTH) << "merge <model_a> <model_b> <output_path>"
               << "Merge two models" << std::endl
               << std::setw(COLUMN_WIDTH) << "help" << "Show this message" << std::endl
@@ -161,6 +163,37 @@ int score(const std::vector<std::string>& args)
     return 0;
 }
 
+int prune(const std::vector<std::string>& args)
+{
+    if (args.size() != 5)
+    {
+        std::cerr << "Usage: markov-music prune <model_path> <threshold> <output_path>"
+                  << std::endl;
+        return 1;
+    }
+    MusicModel model = load_model(args[2]);
+    if (model.empty())
+    {
+        std::cerr << "Failed to load model: " << args[2] << std::endl;
+        return 1;
+    }
+    double threshold = 0.0;
+    try
+    {
+        threshold = std::stod(args[3]);
+    }
+    catch (const std::invalid_argument&)
+    {
+        std::cerr << "Invalid threshold: " << args[3] << std::endl;
+        return 1;
+    }
+    model.prune(threshold);
+    std::ofstream file(args[4]);
+    model.save(file);
+    std::cout << "Model saved: " << args[4] << std::endl;
+    return 0;
+}
+
 int merge(const std::vector<std::string>& args)
 {
     if (args.size() != 5)
@@ -202,6 +235,10 @@ int run(const std::vector<std::string>& args)
     if (command == "score")
     {
         return score(args);
+    }
+    if (command == "prune")
+    {
+        return prune(args);
     }
     if (command == "merge")
     {

@@ -75,6 +75,43 @@ bool MarkovTrie::empty() const
 {
     return root->counts.empty();
 }
+
+static std::size_t node_count(const TrieNode& node)
+{
+    std::size_t count = 1;
+    for (const auto& [token, child] : node.children)
+    {
+        count += node_count(*child);
+    }
+    return count;
+}
+
+std::size_t MarkovTrie::size() const
+{
+    return node_count(*root);
+}
+
+static void prune_node(TrieNode& node, double threshold)
+{
+    int total = 0;
+    for (const auto& [token, count] : node.counts)
+    {
+        total += count;
+    }
+    std::erase_if(node.counts, [&](const auto& pair)
+                  { return static_cast<double>(pair.second) / total < threshold; });
+    for (auto& [token, child] : node.children)
+    {
+        prune_node(*child, threshold);
+    }
+    std::erase_if(node.children, [](const auto& pair) { return pair.second->counts.empty(); });
+}
+
+void MarkovTrie::prune(double threshold)
+{
+    prune_node(*root, threshold);
+}
+
 void MarkovTrie::insert(std::span<const Token> history, Token next_token)
 {
     TrieNode* current_node = root.get();

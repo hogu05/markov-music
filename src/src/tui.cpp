@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include "formats.hpp"
@@ -12,9 +13,13 @@ void Tui::run()
     std::cout << "\033[?1049h";
 
     actions = {
-        {"Load model", [this] { load_model(); }}, {"Train", [this] { train(); }},
-        {"Score", [this] { score(); }},           {"Generate", [this] { generate_track(); }},
-        {"Save model", [this] { save_model(); }}, {"Merge model", [this] { merge_model(); }},
+        {"Load model", [this] { load_model(); }},
+        {"Train", [this] { train(); }},
+        {"Score", [this] { score(); }},
+        {"Generate", [this] { generate_track(); }},
+        {"Save model", [this] { save_model(); }},
+        {"Prune model", [this] { prune_model(); }},
+        {"Merge model", [this] { merge_model(); }},
         {"Clear model", [this] { clear(); }},
     };
 
@@ -248,6 +253,26 @@ void Tui::score()
     }
 }
 
+void Tui::prune_model()
+{
+    if (model.empty())
+    {
+        info_line = "Model not trained";
+        return;
+    }
+    auto threshold = ask_double("Enter threshold (0.0 - 1.0)");
+    if (!threshold)
+    {
+        return;
+    }
+    const std::size_t before = model.size();
+    info_line = "Pruning...";
+    update_screen();
+    model.prune(*threshold);
+    info_line =
+        "Pruned: " + std::to_string(before) + " -> " + std::to_string(model.size()) + " nodes";
+}
+
 void Tui::merge_model()
 {
     if (model.empty())
@@ -348,6 +373,23 @@ int Tui::ask_option(const std::string& prompt, const std::vector<std::string>& o
     }
     info_line = "Invalid option";
     return -1;
+}
+
+std::optional<double> Tui::ask_double(const std::string& prompt)
+{
+    info_line = prompt;
+    update_screen();
+    std::string input;
+    std::getline(std::cin, input);
+    try
+    {
+        return std::stod(input);
+    }
+    catch (const std::invalid_argument&)
+    {
+        info_line = "Invalid number";
+        return std::nullopt;
+    }
 }
 
 std::string Tui::ask_path(const std::string& prompt, bool check)

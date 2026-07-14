@@ -16,6 +16,8 @@ class MusicModel
     Track generate_track(std::mt19937& rng) const;
     double evaluate(const Track& track) const;
     bool empty() const;
+    std::size_t size() const;
+    void prune(double threshold);
     MusicModel operator+(const MusicModel& other) const;
     bool operator==(const MusicModel& other) const;
     void save(std::ostream& stream) const;

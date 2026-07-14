@@ -82,6 +82,16 @@ bool MusicModel::empty() const
     return markov_trie.empty();
 }
 
+std::size_t MusicModel::size() const
+{
+    return markov_trie.size();
+}
+
+void MusicModel::prune(double threshold)
+{
+    markov_trie.prune(threshold);
+}
+
 MusicModel MusicModel::operator+(const MusicModel& other) const
 {
     MusicModel result;
