@@ -1,5 +1,9 @@
 # Markov Music - Developer Documentation
 
+## Class Diagram
+
+![Class Diagram](diagram.svg)
+
 ## Data representation
 
 ### Token
@@ -45,6 +49,19 @@ Each node stores how many times each token followed the history represented by t
   - This makes deeper nodes (with longer history) contribute more, without ignoring shallower ones
 - Return the weighted average across all depths
 
+### `size`
+
+- Returns the total number of nodes in the trie, including the root (always at least 1)
+
+### `prune`
+
+- Remove all transitions whose count is below the threshold
+- If a node becomes empty, remove its children too
+
+### `operator+`
+
+- Merges two tries by combining token counts and recursively merging children
+
 ## Music Model
 
 Music Model wraps Markov Trie and exposes the 3 main operations of the program: training, generation and evaluation.
@@ -63,30 +80,54 @@ The maximum history length is defined by `MAX_ORDER`.
 - Compute the geometric mean of the token probabilities using `get_probability`
 - Add a small epsilon to each probability before taking the log to avoid log(0) = `-inf` for unseen tokens
 
-## MIDI Processor
+### `size`
 
-MIDI Processor handles loading and saving of MIDI files, converting between MIDI format and the internal Track representation.
+- Returns the size of the underlying Markov Trie
 
-### `load_track`
+### `prune`
 
-- Parse notes from all tracks in the MIDI file
-- Sort notes by time
-- Convert MIDI ticks to units and snap to the nearest value on a time grid
-  - This reduces the number of distinct tokens and makes the model less sensitive to timing imprecisions in MIDI files
-- Convert each note to a Token
-- Return the resulting Track
+- Prunes the underlying Markov Trie
 
-### `save_track`
+### `operator+`
 
-- Convert each Token to a MIDI note
-- Write the notes to a MIDI file
+- Merges two models by merging their underlying Markov Tries
 
-## External Libraries
+## Formats
 
-### `midifile`
+Formats are implemented using the `NoteLoader` and `NoteSaver` abstract classes:
 
-[midifile](https://github.com/craigsapp/midifile/tree/master) is a C++ library for reading and writing MIDI files.
-It is included in the repository at `src/libs/midifile/`.
+```cpp
+class NoteLoader { virtual Notes load(std::istream&) = 0; };
+class NoteSaver  { virtual void save(const Notes&, std::ostream&) = 0; };
+```
+
+To add a new format, implement one or both classes and register them in `formats.cpp`.
+
+### MIDI
+
+- **Load**: parses all tracks, converts MIDI ticks to units, snaps to a time grid
+- **Save**: converts notes to NOTE_ON/NOTE_OFF events, writes a single-track MIDI file
+
+### Plain
+
+- **Load**: reads lines of `pitch start duration`, skips zero-duration notes
+- **Save**: writes one note per line as `pitch start duration`
+
+### ABC
+
+- **Save**: converts notes to ABC notation with chord, tie, and rest support
+
+## Implementation Challenges
+
+- Token storage
+  - Trie
+- Score weighting
+  - Quadratic depth weighting
+- Chord support
+  - `wait = 0` in Token
+- Token generalization
+  - `pitch_delta` instead of absolute pitch
+  - Time grid snapping
 
 ## Scripts
 

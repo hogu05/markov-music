@@ -56,8 +56,6 @@ The program presents a menu:
 - **8. Clear model** - clear the current model
 - **0. Quit** - quit the program
 
-![Demo](demo.gif)
-
 ### CLI
 
 Pass a command as an argument:
