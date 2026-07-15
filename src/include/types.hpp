@@ -7,12 +7,15 @@ using Unit = int;
 using Pitch = int;
 using PitchDelta = int;
 
+struct Note;
+
 struct Token
 {
     PitchDelta pitch_delta;
     Unit duration;
     Unit wait;
     auto operator<=>(const Token&) const = default;
+    Note to_note(Pitch& current_pitch, Unit& current_time) const;
 };
 
 using Track = std::vector<Token>;
@@ -23,6 +26,7 @@ struct Note
     Pitch pitch;
     Unit duration;
     auto operator<=>(const Note&) const = default;
+    Token to_token(Pitch prev_pitch, Unit next_start) const;
 };
 
 using Notes = std::vector<Note>;

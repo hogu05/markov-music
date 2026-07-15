@@ -10,6 +10,23 @@ Unit snap(Unit value)
                                      { return std::abs(a - value) < std::abs(b - value); });
 }
 
+Token Note::to_token(Pitch prev_pitch, Unit next_start) const
+{
+    return {
+        .pitch_delta = pitch - prev_pitch,
+        .duration = snap(duration),
+        .wait = snap(next_start - start),
+    };
+}
+
+Note Token::to_note(Pitch& current_pitch, Unit& current_time) const
+{
+    current_pitch = std::clamp(current_pitch + pitch_delta, 0, MAX_PITCH);
+    Note note = {.start = current_time, .pitch = current_pitch, .duration = duration};
+    current_time += wait;
+    return note;
+}
+
 Track notes_to_track(const Notes& notes)
 {
     if (notes.empty())
@@ -25,11 +42,9 @@ Track notes_to_track(const Notes& notes)
 
     for (std::size_t i = 0; i < sorted.size(); ++i)
     {
-        const Note& note = sorted[i];
-        PitchDelta delta = note.pitch - prev_pitch;
-        Unit wait = (i + 1 < sorted.size()) ? snap(sorted[i + 1].start - note.start) : 0;
-        track.push_back({.pitch_delta = delta, .duration = snap(note.duration), .wait = wait});
-        prev_pitch = note.pitch;
+        Unit next_start = (i + 1 < sorted.size()) ? sorted[i + 1].start : sorted[i].start;
+        track.push_back(sorted[i].to_token(prev_pitch, next_start));
+        prev_pitch = sorted[i].pitch;
     }
 
     track.push_back(END_TOKEN);
@@ -48,10 +63,7 @@ Notes track_to_notes(const Track& track)
         {
             break;
         }
-        current_pitch = std::clamp(current_pitch + token.pitch_delta, 0, MAX_PITCH);
-        notes.push_back(
-            {.start = current_time, .pitch = current_pitch, .duration = token.duration});
-        current_time += token.wait;
+        notes.push_back(token.to_note(current_pitch, current_time));
     }
 
     return notes;
