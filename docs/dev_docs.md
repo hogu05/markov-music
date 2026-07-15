@@ -2,7 +2,7 @@
 
 ## Class Diagram
 
-![Class Diagram](diagram.svg)
+![Class Diagram](diagram.png)
 
 ## Data representation
 

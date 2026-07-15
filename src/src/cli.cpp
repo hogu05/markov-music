@@ -50,6 +50,10 @@ Track load_track(const std::filesystem::path& file_path)
     }
     formats::Format format = maybe_format.value();
     NoteLoader* loader = formats::get_loader(format);
+    if (loader == nullptr)
+    {
+        return {};
+    }
     std::ifstream stream(file_path, formats::open_flags(format));
     return notes_to_track(loader->load(stream));
 }

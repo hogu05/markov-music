@@ -74,6 +74,6 @@ void MidiSaver::save(const Notes& notes, std::ostream& stream)
     binary_utils::write_big_endian<uint16_t>(stream, midi_constants::DEFAULT_TICKS_PER_QUARTER);
 
     stream.write("MTrk", midi_constants::MTRK_ID_SIZE);
-    binary_utils::write_big_endian<uint32_t>(stream, track.size());
+    binary_utils::write_big_endian<uint32_t>(stream, static_cast<uint32_t>(track.size()));
     stream.write(track.data(), static_cast<std::streamsize>(track.size()));
 }

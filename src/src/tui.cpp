@@ -38,7 +38,7 @@ void Tui::run()
             {
                 break;
             }
-            if (choice >= 1 && choice <= actions.size())
+            if (choice >= 1 && choice <= static_cast<int>(actions.size()))
             {
                 actions[choice - 1].second();
             }
@@ -100,6 +100,10 @@ void Tui::train()
         total++;
         formats::Format format = maybe_format.value();
         NoteLoader* loader = formats::get_loader(format);
+        if (loader == nullptr)
+        {
+            return;
+        }
         std::ifstream stream(file_path, formats::open_flags(format));
         Track track = notes_to_track(loader->load(stream));
         if (!track.empty())
@@ -203,6 +207,10 @@ void Tui::score()
         }
         formats::Format format = maybe_format.value();
         NoteLoader* loader = formats::get_loader(format);
+        if (loader == nullptr)
+        {
+            return -1.0;
+        }
         std::ifstream stream(file_path, formats::open_flags(format));
         Track track = notes_to_track(loader->load(stream));
         if (track.empty())
@@ -363,7 +371,7 @@ int Tui::ask_option(const std::string& prompt, const std::vector<std::string>& o
             info_line = "Cancelled";
             return -1;
         }
-        if (choice >= 1 && choice <= options.size())
+        if (choice >= 1 && choice <= static_cast<int>(options.size()))
         {
             return choice - 1;
         }

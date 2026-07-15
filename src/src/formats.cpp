@@ -37,6 +37,8 @@ NoteSaver* get_saver(Format format)
         return &abc_saver;
     case Format::Plain:
         return &plain_saver;
+    default:
+        return nullptr;
     }
 }
 
@@ -59,7 +61,7 @@ std::optional<Format> format_from_string(const std::string& string)
 
 std::ios::openmode open_flags(Format format)
 {
-    return format == Format::Midi ? std::ios::binary : std::ios::in;
+    return format == Format::Midi ? std::ios::binary : std::ios::openmode{};
 }
 
 std::optional<Format> format_from_extension(const std::string& extension)
