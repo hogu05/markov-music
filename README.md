@@ -1,4 +1,4 @@
-# Markov Music - User Documentation
+# Markov Music
 
 Tool for training a Markov chain model on tracks, generating new music, and evaluating how well tracks fit the model.
 
